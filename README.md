@@ -54,6 +54,7 @@ Then open http://localhost:8000.
 
 ```
 index.html                 home page: pick a grade
+PLAN.html                  project plan: game ideas, ground rules, progress log
 grade-1/
   index.html               the grade's game list
   maths/                   one HTML file per game

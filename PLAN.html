@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Project Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- Open Learning Games: project plan, game ideas and progress log. Update it when a game is built. -->
+<style>
+  /* Layout: a single readable column, like an exercise book; each subject gets its own colour tab */
+  :root {
+    --bg: #f3f7fb;
+    --paper: #ffffff;
+    --ink: #1d3557;
+    --muted: #5a6b82;
+    --line: #dbe4ee;
+    --accent: #ff4d6d;
+    --done: #2a9d8f;
+    --done-bg: #e3f5f2;
+    --maths: #3a86ff;
+    --english: #e85d04;
+    --science: #2a9d8f;
+    --hindi: #b5179e;
+    --general: #6a4c93;
+    --code-bg: #eef3f8;
+    --display: "Baloo 2", "Comic Sans MS", system-ui, sans-serif;
+    --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+    --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1724; --paper: #172234; --ink: #e6edf6; --muted: #9fb0c6; --line: #2a3a52;
+      --accent: #ff6b86; --done: #4fd1bd; --done-bg: #143a3a; --code-bg: #0f1a2a;
+      --maths: #6aa3ff; --english: #ff8c42; --science: #4fd1bd; --hindi: #e05fcf; --general: #a786d6;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1724; --paper: #172234; --ink: #e6edf6; --muted: #9fb0c6; --line: #2a3a52;
+    --accent: #ff6b86; --done: #4fd1bd; --done-bg: #143a3a; --code-bg: #0f1a2a;
+    --maths: #6aa3ff; --english: #ff8c42; --science: #4fd1bd; --hindi: #e05fcf; --general: #a786d6;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.6;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .wrap { max-width: 860px; margin: 0 auto; padding-block: 28px 56px; display: flex; flex-direction: column; gap: 28px; }
+
+  h1, h2, h3 { font-family: var(--display); line-height: 1.15; margin: 0; text-wrap: balance; }
+  h1 { font-size: clamp(32px, 6vw, 48px); font-weight: 800; }
+  h2 { font-size: 26px; font-weight: 800; }
+  h3 { font-size: 20px; font-weight: 800; }
+  p { margin: 0; }
+  code { font-family: var(--mono); font-size: .88em; background: var(--code-bg); padding: 1px 6px; border-radius: 6px; }
+  a { color: var(--accent); font-weight: 700; }
+  a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+  header { display: flex; flex-direction: column; gap: 12px; }
+  .eyebrow { font-weight: 700; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .lead { font-size: 18px; color: var(--muted); max-width: 65ch; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { font-size: 14px; font-weight: 700; padding: 3px 12px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); }
+  .progress { display: flex; align-items: center; gap: 12px; font-weight: 700; }
+  .bar { flex: 1; max-width: 320px; height: 12px; border-radius: 999px; background: var(--line); overflow: hidden; }
+  .bar span { display: block; height: 100%; background: var(--done); border-radius: 999px; }
+
+  nav { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 15px; padding-block: 10px; border-block: 1.5px solid var(--line); }
+  nav a { text-decoration: none; color: var(--ink); font-weight: 600; }
+  nav a:hover { color: var(--accent); }
+
+  section { display: flex; flex-direction: column; gap: 14px; scroll-margin-top: 16px; }
+  .sub { color: var(--muted); }
+
+  .goals { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .goals li { background: var(--paper); border: 1.5px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  .goals b { display: block; font-family: var(--display); font-size: 18px; }
+
+  .rules { display: grid; grid-template-columns: max-content 1fr; background: var(--paper); border: 1.5px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .rules dt, .rules dd { margin: 0; padding: 10px 14px; border-top: 1.5px solid var(--line); }
+  .rules dt { font-weight: 700; }
+  .rules dd { min-width: 0; }
+  .rules dt:first-of-type, .rules dd:first-of-type { border-top: 0; }
+  @media (max-width: 520px) {
+    .rules { grid-template-columns: 1fr; }
+    .rules dd { border-top: 0; padding-top: 0; }
+  }
+
+  .subject { display: flex; flex-direction: column; gap: 10px; }
+  .subject h3 { display: flex; align-items: center; gap: 10px; }
+  .subject h3::before { content: ""; width: 14px; height: 14px; border-radius: 4px; background: var(--c); }
+  .subject h3 small { font-family: var(--body); font-size: 14px; font-weight: 600; color: var(--muted); }
+  .games { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+  .game { background: var(--paper); border: 1.5px solid var(--line); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .game .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .game b { font-family: var(--display); font-size: 18px; line-height: 1.2; }
+  .status { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; color: var(--muted); }
+  .game.built { border-color: var(--done); background: var(--done-bg); }
+  .game.built .status { color: var(--done); }
+  .game p { font-size: 15px; color: var(--muted); }
+  .game .links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .btn { font-size: 14px; text-decoration: none; padding: 4px 12px; border-radius: 999px; background: var(--done); color: var(--paper); }
+  .btn.alt { background: transparent; color: var(--done); border: 1.5px solid var(--done); }
+
+  ol.steps { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 8px; max-width: 70ch; }
+  ol.steps ul { margin: 6px 0 0; padding-left: 1.2em; }
+
+  pre { margin: 0; background: var(--code-bg); border-radius: 12px; padding: 14px 16px; font-family: var(--mono); font-size: 14px; line-height: 1.5; overflow-x: auto; }
+  .tree-note { color: var(--muted); }
+
+  .table-scroll { overflow-x: auto; background: var(--paper); border: 1.5px solid var(--line); border-radius: 14px; }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 14px; border-top: 1.5px solid var(--line); vertical-align: top; }
+  thead th { border-top: 0; font-size: 13px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+  td.empty { color: var(--muted); font-style: italic; }
+
+  ul.ideas { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; max-width: 70ch; }
+  footer { font-size: 14px; color: var(--muted); border-top: 1.5px solid var(--line); padding-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="eyebrow">Free-time project · Plan</span>
+    <h1>Open Learning Games: Project Plan</h1>
+    <p class="lead">Small, fun <b>three.js games</b>, each in <b>one HTML file</b>, that help children practise their school subjects. Games are built one subject or topic at a time.</p>
+    <div class="chips">
+      <span class="chip">Class 1</span><span class="chip">CBSE</span><span class="chip">NCERT</span>
+    </div>
+    <div class="progress"><span>7 of 19 games built</span><div class="bar" role="img" aria-label="7 of 19 games built"><span style="width: 36.8%"></span></div></div>
+    <p class="sub" style="margin-top:12px">🌐 <b>Public site:</b> <a href="https://frozenprakash.github.io/open-learning-games/">frozenprakash.github.io/open-learning-games</a>. Share this link with any phone (open it in Chrome).
+    Source: <a href="https://github.com/frozenprakash/open-learning-games">github.com/frozenprakash/open-learning-games</a>. This page is <code>PLAN.html</code> in the repo.</p>
+  </header>
+
+  <nav aria-label="Sections">
+    <a href="#goals">Goals</a><a href="#rules">Ground rules</a><a href="#games">Games</a>
+    <a href="#start">Starting a game</a><a href="#folder">Folder</a><a href="#log">Progress log</a><a href="#ideas">Ideas</a>
+  </nav>
+
+  <section id="goals">
+    <h2>Goals</h2>
+    <ul class="goals">
+      <li><b>Fun first</b>It should feel like a game, not a worksheet with graphics added on top.</li>
+      <li><b>Learning in the game</b>The questions are part of how you play (shoot the right answer, build a bridge with the right word), not quizzes between levels.</li>
+      <li><b>One HTML file per game</b>Double-click to open it in any browser. No install and no server, and it works offline once loaded.</li>
+      <li><b>Short sessions</b>One round takes 5–10 minutes.</li>
+      <li><b>Grade 1 first (Nov 2026)</b>Class 1, CBSE / NCERT. Other grades welcome (see CONTRIBUTING.md).</li>
+      <li><b>Linked to the syllabus</b>Use topics children are studying in school: Maths, English, Science, Hindi, General.</li>
+    </ul>
+  </section>
+
+  <section id="rules">
+    <h2>Ground rules for every game</h2>
+    <dl class="rules">
+      <dt>Format</dt><dd>One <code>.html</code> file. three.js from a CDN with a fixed version (e.g. <code>three@0.160.0</code>)</dd>
+      <dt>Controls</dt><dd>Mouse/touch first, so it also works on a tablet or phone. Keyboard is optional</dd>
+      <dt>Questions</dt><dd>Kept in a plain array at the top of the file, so anyone can change them without touching game code</dd>
+      <dt>Difficulty</dt><dd>Easy / Medium / Hard picker, or it gets harder slowly as the child plays</dd>
+      <dt>Feedback</dt><dd>Show the right answer kindly when the answer is wrong. Never just "WRONG"</dd>
+      <dt>Rewards</dt><dd>Stars, points, unlockable colours/characters. Best score saved in <code>localStorage</code></dd>
+      <dt>Sound</dt><dd>Simple effects, with a mute button</dd>
+      <dt>Language</dt><dd>Simple English on screen. Hindi games use Devanagari</dd>
+    </dl>
+  </section>
+
+  <section id="games">
+    <h2>Subjects and game ideas</h2>
+    <p class="sub">Pick one to build. Tick it off once built.</p>
+
+    <div class="subject" style="--c: var(--maths)">
+      <h3>Maths <small>6 of 6 built ✓</small></h3>
+      <ul class="games">
+        <li class="game built">
+          <div class="top"><b>Balloon Pop Party</b><span class="status">✓ Built</span></div>
+          <p>Pop the balloon with the right answer. Counting with fruits, sums with pictures, before/after/between, bigger/smaller, number names, skip counting. Easy / Medium / Hard.</p>
+          <div class="links">
+            <a class="btn" href="grade-1/maths/balloon-pop-party.html">Play</a>
+            <a class="btn alt" href="https://frozenprakash.github.io/open-learning-games/grade-1/maths/balloon-pop-party.html" target="_blank" rel="noopener">Web link (any phone)</a>
+          </div>
+        </li>
+        <li class="game built">
+          <div class="top"><b>Number Blaster</b><span class="status">✓ Built</span></div>
+          <p>Tap the space rock with the right answer and the rocket blasts it. Adding and taking away within 10 and 20, missing numbers (3 + ? = 7), doubles, making 10. Star pictures to count on Easy.</p>
+          <div class="links">
+            <a class="btn" href="grade-1/maths/number-blaster.html">Play</a>
+            <a class="btn alt" href="https://frozenprakash.github.io/open-learning-games/grade-1/maths/number-blaster.html" target="_blank" rel="noopener">Web link (any phone)</a>
+          </div>
+        </li>
+        <li class="game built">
+          <div class="top"><b>Number Tower</b><span class="status">✓ Built</span></div>
+          <p>Each right answer flies onto the tower. Tens and ones with 3D base-ten blocks, numbers to 99, 10 more / 10 less, groups of 2s, 5s and 10s. Replaces the Times-Table Tower idea, which is beyond Class 1.</p>
+          <div class="links">
+            <a class="btn" href="grade-1/maths/number-tower.html">Play</a>
+            <a class="btn alt" href="https://frozenprakash.github.io/open-learning-games/grade-1/maths/number-tower.html" target="_blank" rel="noopener">Web link (any phone)</a>
+          </div>
+        </li>
+        <li class="game built">
+          <div class="top"><b>Pizza Party</b><span class="status">✓ Built</span></div>
+          <p>Picnic pizzas with animal friends. Equal and unequal parts, halves, quarters, sharing toppings equally, "half of 8". Replaces the Fraction Pizza idea at Class 1 level.</p>
+          <div class="links">
+            <a class="btn" href="grade-1/maths/pizza-party.html">Play</a>
+            <a class="btn alt" href="https://frozenprakash.github.io/open-learning-games/grade-1/maths/pizza-party.html" target="_blank" rel="noopener">Web link (any phone)</a>
+          </div>
+        </li>
+        <li class="game built">
+          <div class="top"><b>Shape Hunter</b><span class="status">✓ Built</span></div>
+          <p>Find things on a picnic blanket: shaped like a ball, box, can or cone, then sphere / cube / cuboid / cylinder / cone, then which shapes roll, stack or have a circle face.</p>
+          <div class="links">
+            <a class="btn" href="grade-1/maths/shape-hunter.html">Play</a>
+            <a class="btn alt" href="https://frozenprakash.github.io/open-learning-games/grade-1/maths/shape-hunter.html" target="_blank" rel="noopener">Web link (any phone)</a>
+          </div>
+        </li>
+        <li class="game built">
+          <div class="top"><b>Money Market</b><span class="status">✓ Built</span></div>
+          <p>A toy-and-snack shop. Know the ₹1, ₹2, ₹5, ₹10 coins, count money, pay the exact price coin by coin, "can I buy it?", which costs more, change from ₹10/₹20/₹50.</p>
+          <div class="links">
+            <a class="btn" href="grade-1/maths/money-market.html">Play</a>
+            <a class="btn alt" href="https://frozenprakash.github.io/open-learning-games/grade-1/maths/money-market.html" target="_blank" rel="noopener">Web link (any phone)</a>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="subject" style="--c: var(--english)">
+      <h3>English <small>1 of 5 built</small></h3>
+      <ul class="games">
+        <li class="game built">
+          <div class="top"><b>Word Lanterns</b><span class="status">✓ Built</span></div>
+          <p>Read the word out loud and the microphone lights the lantern. Words from Class 1 reading-practice sheets. "Hear it" reads the word aloud; a grown-up can tap 👍 if the mic misses. Tricky words come back.</p>
+          <p><b>New word list?</b> Add the words to <code>grade-1/english/word-lanterns-words.txt</code> in the repo, run <code>tools/make-word-lanterns.ps1</code> and push. The web link stays the same and updates on every phone.</p>
+          <div class="links">
+            <a class="btn" href="grade-1/english/word-lanterns.html">Play</a>
+            <a class="btn alt" href="https://frozenprakash.github.io/open-learning-games/grade-1/english/word-lanterns.html" target="_blank" rel="noopener">Web link (any phone)</a>
+          </div>
+        </li>
+        <li class="game"><div class="top"><b>Spelling Runner</b><span class="status">Idea</span></div><p>Endless runner; jump through the letters that spell the word in order.</p></li>
+        <li class="game"><div class="top"><b>Word Bridge</b><span class="status">Idea</span></div><p>Cross a river by picking the correct word (opposites, plurals, tenses).</p></li>
+        <li class="game"><div class="top"><b>Sentence Builder</b><span class="status">Idea</span></div><p>Drag floating word blocks into the right order.</p></li>
+        <li class="game"><div class="top"><b>Rhyme Rocket</b><span class="status">Idea</span></div><p>Steer toward the planets that rhyme with the target word.</p></li>
+      </ul>
+    </div>
+
+    <div class="subject" style="--c: var(--science)">
+      <h3>Science <small>0 of 4 built</small></h3>
+      <ul class="games">
+        <li class="game"><div class="top"><b>Solar System Explorer</b><span class="status">Idea</span></div><p>Fly to the planets, collect facts, then answer questions.</p></li>
+        <li class="game"><div class="top"><b>Body Builder</b><span class="status">Idea</span></div><p>Put organs into a 3D body outline.</p></li>
+        <li class="game"><div class="top"><b>Sort It!</b><span class="status">Idea</span></div><p>Sort objects into living/non-living, solid/liquid/gas, magnetic/not.</p></li>
+        <li class="game"><div class="top"><b>Plant Grower</b><span class="status">Idea</span></div><p>Give water, sun and soil in the right amounts to grow a plant.</p></li>
+      </ul>
+    </div>
+
+    <div class="subject" style="--c: var(--hindi)">
+      <h3>Hindi <small>0 of 2 built</small></h3>
+      <ul class="games">
+        <li class="game"><div class="top"><b>Akshar Catch</b><span class="status">Idea</span></div><p>Catch falling Devanagari letters to make a word.</p></li>
+        <li class="game"><div class="top"><b>Shabd Match</b><span class="status">Idea</span></div><p>Match the Hindi word with its picture.</p></li>
+      </ul>
+    </div>
+
+    <div class="subject" style="--c: var(--general)">
+      <h3>General / Common <small>0 of 2 built</small></h3>
+      <ul class="games">
+        <li class="game"><div class="top"><b>Geography Globe</b><span class="status">Idea</span></div><p>Spin a 3D globe and tap the country or state that's asked for.</p></li>
+        <li class="game"><div class="top"><b>Memory Cards 3D</b><span class="status">Idea</span></div><p>Flip-card matching with whatever topic the class is on now.</p></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="start">
+    <h2>How to start a new game</h2>
+    <ol class="steps">
+      <li>Clone the repo (or fork it on GitHub).</li>
+      <li>Pick one idea from the list above (or a new one) and decide:
+        <ul>
+          <li>the subject and the exact topic (e.g. "6 and 7 times tables")</li>
+          <li>the game idea</li>
+          <li>the class / level it is for</li>
+          <li>that it follows the ground rules above and in CONTRIBUTING.md</li>
+        </ul>
+      </li>
+      <li>Save it in the repo under <code>grade-1/&lt;subject&gt;/</code> with a lowercase hyphenated name, e.g. <code>grade-1/maths/number-blaster.html</code>, add its card to <code>grade-1/index.html</code> and the README table, then open a pull request (or commit and push if you maintain the repo).</li>
+      <li>Play-test it <b>with a child</b>, write down what they liked or found boring, and adjust.</li>
+      <li>Tick it off in the plan and add a row to the progress log.</li>
+    </ol>
+  </section>
+
+  <section id="folder">
+    <h2>Folder layout</h2>
+    <pre>Source/open-learning-games/       ← the git repo
+├── PLAN.html                    ← this page (the plan)
+├── index.html                   ← home page: pick a grade
+├── grade-1/
+│   ├── index.html               ← Grade 1 game list
+│   ├── maths/                   ← balloon-pop-party, money-market, number-blaster,
+│   │                              number-tower, pizza-party, shape-hunter (.html)
+│   └── english/
+│       ├── word-lanterns.html         ← made by the script, don't edit by hand
+│       └── word-lanterns-words.txt    ← word lists, one "# name" per sheet
+├── templates/
+│   ├── starter-template.html          ← copy this to start a new game
+│   └── word-lanterns-template.html    ← Word Lanterns source; change the game here
+└── tools/
+    └── make-word-lanterns.ps1         ← rebuilds word-lanterns.html from the two files above</pre>
+    <p class="tree-note">New games go in their subject folder, e.g. <code>grade-1/english/spelling-runner.html</code>.</p>
+  </section>
+
+  <section id="log">
+    <h2>Progress log</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Date</th><th>Game</th><th>Subject / topic</th><th>Play-test notes</th><th>Next tweak</th></tr></thead>
+        <tbody>
+          <tr><td>22 Nov 2026</td><td>Balloon Pop Party</td><td>Maths, Class 1 (counting, +/−, number order)</td><td class="empty">To fill after play-testing</td><td class="empty">—</td></tr>
+          <tr><td>22 Nov 2026</td><td>Number Blaster</td><td>Maths, adding and taking away to 20</td><td class="empty">To fill after play-testing</td><td class="empty">—</td></tr>
+          <tr><td>22 Nov 2026</td><td>Number Tower</td><td>Maths, tens and ones, groups</td><td class="empty">To fill after play-testing</td><td class="empty">—</td></tr>
+          <tr><td>22 Nov 2026</td><td>Pizza Party</td><td>Maths, halves, quarters, sharing</td><td class="empty">To fill after play-testing</td><td class="empty">—</td></tr>
+          <tr><td>22 Nov 2026</td><td>Shape Hunter</td><td>Maths, 3D shapes</td><td class="empty">To fill after play-testing</td><td class="empty">—</td></tr>
+          <tr><td>22 Nov 2026</td><td>Money Market</td><td>Maths, money (₹)</td><td class="empty">To fill after play-testing</td><td class="empty">—</td></tr>
+          <tr><td>22 Nov 2026</td><td>Word Lanterns</td><td>English, reading sight words (sheets of 18 and 19 Nov)</td><td class="empty">To fill after play-testing</td><td class="empty">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="ideas">
+    <h2>Notes and ideas parking lot</h2>
+    <ul class="ideas">
+      <li><s>A simple home page linking all the games</s> Done: <code>index.html</code> and <code>grade-1/index.html</code></li>
+      <li>A "parent mode" for typing in this week's spelling list or sums (reading words are covered by <code>word-lanterns-words.txt</code>)</li>
+      <li>Track which questions are missed most, so they come up more often</li>
+    </ul>
+  </section>
+
+  <footer>Last updated 22 Nov 2026. To suggest a change, open an issue or a pull request.</footer>
+</div>
+</body>
+</html>

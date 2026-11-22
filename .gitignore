@@ -2,6 +2,3 @@ node_modules/
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# Private planning page (kept only on this computer)
-PLAN.html
