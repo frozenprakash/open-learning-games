@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Word Lanterns</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏮</text></svg>">
+<!-- Made by tools/make-word-lanterns.ps1 from templates/word-lanterns-template.html and a word list. Change the template, not this file. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+<style>
+  :root{--ink:#fff8e7;--dim:#a9b6d8;--gold:#ffc94d;--orange:#ff8a2b;--panel:rgba(14,26,61,.86);--line:rgba(255,255,255,.14);--ok:#43d17a}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;overflow:hidden;background:#0b1533;color:var(--ink);font-family:"Baloo 2",system-ui,sans-serif;user-select:none;-webkit-user-select:none}
+  canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulation}
+  #top{position:fixed;top:0;left:0;right:0;height:56px;display:flex;align-items:center;gap:8px;padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top));z-index:5}
+  #top .sp{flex:1;text-align:center;font-weight:800;font-size:18px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .round{width:44px;height:44px;border-radius:50%;background:var(--panel);border:1px solid var(--line);font-size:20px;display:grid;place-items:center;flex:none}
+  #stars{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:4px 14px;font-weight:800;font-size:18px;flex:none}
+  #heard{position:fixed;left:50%;transform:translateX(-50%);bottom:150px;max-width:92vw;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:6px 16px;font-size:18px;color:var(--dim);z-index:4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .2s}
+  #heard.show{opacity:1}
+  #heard b{color:var(--ink)}
+  #msg{position:fixed;left:50%;bottom:205px;transform:translate(-50%,0) scale(.6);font-size:clamp(34px,8vw,60px);font-weight:800;color:var(--gold);text-shadow:0 4px 18px rgba(0,0,0,.6);opacity:0;pointer-events:none;z-index:6;transition:opacity .25s,transform .25s;white-space:nowrap}
+  #msg.show{opacity:1;transform:translate(-50%,0) scale(1)}
+  #msg.soft{color:#cfe0ff;font-size:clamp(26px,6vw,40px)}
+  #controls{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;align-items:flex-end;gap:14px;padding:10px 12px;padding-bottom:max(14px,env(safe-area-inset-bottom));z-index:5}
+  .ctl{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:13px;color:var(--dim);font-weight:600;background:none;width:72px}
+  .ctl .ic{width:58px;height:58px;border-radius:50%;background:var(--panel);border:1px solid var(--line);font-size:26px;display:grid;place-items:center}
+  #mic{width:96px}
+  #mic .ic{width:88px;height:88px;font-size:40px;background:linear-gradient(#ff9f43,#ff6b2b);border:3px solid #ffd59a;box-shadow:0 6px 24px rgba(255,120,40,.45);position:relative}
+  #mic.on .ic{background:linear-gradient(#43d17a,#1fa85a);border-color:#b8f5cf;box-shadow:0 0 0 0 rgba(67,209,122,.7);animation:pulse 1.4s infinite}
+  #mic.off .ic{filter:grayscale(1);opacity:.5}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(67,209,122,.6)}70%{box-shadow:0 0 0 22px rgba(67,209,122,0)}100%{box-shadow:0 0 0 0 rgba(67,209,122,0)}}
+  #hear.nudge .ic{animation:nudge 1s infinite;border-color:var(--gold)}
+  @keyframes nudge{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+  .overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(6,12,32,.72);z-index:10;padding:16px;overflow:auto}
+  .overlay.show{display:flex}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:22px 20px;max-width:560px;width:100%;text-align:center;margin:auto}
+  .card h1{margin:0;font-size:clamp(34px,8vw,50px);line-height:1.05;color:var(--gold)}
+  .card p{margin:8px 0 14px;color:var(--dim);font-size:17px;line-height:1.35}
+  .lists{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:10px 0}
+  .lists button{background:#1b2f66;border:2px solid #34508f;border-radius:18px;padding:12px 14px;text-align:left;font-size:19px;font-weight:800;line-height:1.15}
+  .lists button small{display:block;font-size:14px;font-weight:600;color:var(--dim);margin-top:3px}
+  .lists button.special{background:#3a2a12;border-color:#8a6420}
+  .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+  .pill{background:#1b2f66;border:2px solid #34508f;border-radius:22px;padding:8px 18px;font-size:17px;font-weight:700}
+  .pill.main{background:linear-gradient(#ff9f43,#ff6b2b);border-color:#ffd59a;font-size:20px;padding:10px 24px}
+  #endWords{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0 6px;font-family:Andika,sans-serif;font-size:20px}
+  #endWords span{padding:2px 12px;border-radius:14px;background:#20325f;color:var(--dim)}
+  #endWords span.lit{background:#5a3a10;color:#ffd98a}
+  #note{font-size:14px;color:var(--dim);margin-top:10px}
+  @media (max-height:500px){
+    #controls{right:auto;left:0;top:56px;bottom:0;flex-direction:column;justify-content:center;width:auto;padding-left:max(10px,env(safe-area-inset-left))}
+    #controls{gap:6px}
+    .ctl{width:64px;font-size:0}.ctl .ic{width:46px;height:46px;font-size:21px}
+    #mic{font-size:11px}#mic .ic{width:66px;height:66px;font-size:30px}
+    #msg{bottom:auto;top:62px}
+    #heard{bottom:10px}
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="top">
+  <button class="round" id="homeBtn" aria-label="Menu">⌂</button>
+  <div class="sp" id="listName"></div>
+  <div id="stars">⭐ 0</div>
+  <button class="round" id="muteBtn" aria-label="Sound on or off">🔊</button>
+</div>
+
+<div id="heard"></div>
+<div id="msg"></div>
+
+<div id="controls">
+  <button class="ctl" id="hear"><span class="ic">🔈</span>Hear it</button>
+  <button class="ctl" id="mic"><span class="ic">🎤</span><span id="micLabel">Tap, then read</span></button>
+  <button class="ctl" id="okBtn"><span class="ic">👍</span>Grown-up: right</button>
+  <button class="ctl" id="skipBtn"><span class="ic">⏭</span>Skip</button>
+</div>
+
+<div class="overlay show" id="menu">
+  <div class="card">
+    <h1>🏮 Word Lanterns</h1>
+    <p>Read the word out loud.<br>Read it right and the lantern lights up!</p>
+    <div class="lists" id="lists"></div>
+    <div class="row"><button class="pill" id="caseBtn"></button></div>
+    <div id="note"></div>
+  </div>
+</div>
+
+<div class="overlay" id="end">
+  <div class="card">
+    <h1 id="endTitle">Well done!</h1>
+    <p id="endSub"></p>
+    <div id="endWords"></div>
+    <div class="row">
+      <button class="pill main" id="againBtn">Play again</button>
+      <button class="pill" id="dimBtn">Practise the dark ones</button>
+      <button class="pill" id="menuBtn">Word lists</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ================= WORDS (the script replaces this block) ================= */
+/*WORDS-START*/
+const WORD_LISTS = [{"name":"Set 1: longer words","words":["Before","Little","Always","Where","Around","People","Friend","Inside","Under","Every","About","First","Write","Other","Think","Please","Should","Behind","Again","Listen","Answer"]},{"name":"Set 1: short words","words":["is","am","in","on","of","Do","Go","We","It","By","me","as","an","If","So","Or","To","No","My","Be","He","Us","Does","At","Are","Up"]},{"name":"Set 2: longer words","words":["Called","would","Could","Words","Sound","Found","Asked","Place","Thing","Later","Heard","Still","until","Night","Light","Large","Close","Point","Count","Match","Equal","Share","Order","Sentence","Difficult"]},{"name":"Set 2: easy words","words":["See","Enjoy","Happy","Big","Green","Say","Boy","New","Day","Run","Long","Come","Easy","Ok","Ox","Oh","ah","Pen","Sun","Bat","ma","Box","mat","Toy","Sit","Eat"]}];
+/*WORDS-END*/
+
+/* ================= SETTINGS you can change ================= */
+const WORDS_PER_ROUND = 10;     // lanterns in one round
+const HELP_AFTER_MISSES = 2;    // "Hear it" starts to wiggle after this many wrong tries
+const LEVENSHTEIN_FROM = 6;     // words this long may be off by one letter in what the mic heard
+// What the mic may write instead of the word (sounds the same)
+const SOUNDS_LIKE = {
+  to:['two','too','2'], be:['bee','b'], by:['buy','bye','bi'], no:['know','noh'], so:['sew','sow','soh'],
+  are:['r','our','aar'], oh:['o','owe','ohh','oo'], ok:['okay','k','okey','o k'], ah:['aah','ahh','a','aa'],
+  ma:['maa','mah','mom','mum','mama'], see:['sea','c','si'], sun:['son'], we:['wee','v','vee'], he:['hee'],
+  us:['u s','uss','as'], my:['mai','mi'], me:['mi','mee'], do:['dew','due','doo','2'], go:['goh','gou'],
+  is:['iz','ease','his'], am:['em','um','aam'], in:['inn','een'], on:['own','aan'], of:['ov','off'], an:['and','un','en'],
+  as:['az','is'], at:['et','add'], it:['eat','id'], if:['eef'], up:['ap','op'], or:['oar','ore','aur','awe'],
+  would:['wood','wud'], could:['cud'], write:['right','rite','wright'], where:['wear','ware','were','wair'],
+  heard:['herd','hurt'], night:['knight','nite'], new:['knew','gnu','nu'], close:['clothes','clothe','klose'],
+  boy:['buoy','boi'], mat:['matt','mad','met'], bat:['bet','but'], pen:['pan','pin','penn'], box:['books','bocks'],
+  ox:['ax','axe','oks','x'], sit:['set','seat'], eat:['it','eet'], day:['dey','they'], say:['se','sey'],
+  run:['ran'], toy:['toi'], big:['bag'], still:['steel','stil'], until:['untill','untie'], words:['word'],
+  thing:['think','ting'], found:['fond'], come:['cum','calm'], long:['lung','log'], green:['grin'],
+  place:['plays','plaice'], match:['much','mach'], share:['shair','sher'], other:['udder'], first:['fast','fist'],
+  under:['onder'], every:['evry'], about:['abaut'], again:['a gain'], answer:['ansar'], listen:['lesson','lissen']
+};
+const SAY_AS = { ok:'okay', ma:'maa', us:'us', ah:'aah', oh:'oh', ox:'ox' };   // how "Hear it" says a word
+
+/* ================= little helpers ================= */
+const $ = s => document.querySelector(s);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem('wl-' + k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem('wl-' + k, JSON.stringify(v)); }catch(e){} }
+};
+const shuffle = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const key = w => w.toLowerCase().trim();
+let stats = store.get('stats', {});                 // word -> {ok, miss, last}
+let lowerCase = store.get('lower', true);
+let muted = store.get('muted', false);
+const shown = w => key(w) === 'ok' ? 'OK' : lowerCase ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+
+/* ================= sound ================= */
+let actx = null;
+function ac(){ if(!actx){ try{ actx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){} } if(actx && actx.state === 'suspended') actx.resume(); return actx; }
+function tone(f, dur = .15, type = 'sine', vol = .18, when = 0){
+  if(muted) return; const a = ac(); if(!a) return;
+  const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .02); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + .05);
+}
+const sfx = {
+  tap(){ tone(660, .08, 'triangle', .12); },
+  lit(){ [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, .35, 'triangle', .16, i * .07)); },
+  miss(){ tone(330, .14, 'sine', .14); tone(262, .2, 'sine', .12, .12); },
+  end(){ [392, 523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, .3, 'triangle', .17, i * .12)); }
+};
+let voice = null;
+function pickVoice(){ const vs = speechSynthesis.getVoices(); voice = vs.find(v => /en[-_]IN/i.test(v.lang)) || vs.find(v => /en[-_]GB/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang)) || null; }
+if('speechSynthesis' in window){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function speak(text, rate = .85){
+  return new Promise(res => {
+    if(muted || !('speechSynthesis' in window)) return res();
+    try{
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text); if(voice) u.voice = voice; u.lang = voice ? voice.lang : 'en-IN'; u.rate = rate;
+      let done = false; const fin = () => { if(!done){ done = true; res(); } };
+      u.onend = fin; u.onerror = fin; setTimeout(fin, 4000);
+      speechSynthesis.speak(u);
+    }catch(e){ res(); }
+  });
+}
+
+/* ================= three.js scene ================= */
+const canvas = $('#c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#0b1533');
+const camera = new THREE.PerspectiveCamera(50, 1, .1, 100);
+scene.add(new THREE.HemisphereLight(0x8fa6ff, 0x101830, .9));
+const moonLight = new THREE.DirectionalLight(0xfff1cc, .8); moonLight.position.set(-3, 5, 6); scene.add(moonLight);
+
+// sky stars
+{
+  const n = 420, p = new Float32Array(n * 3);
+  for(let i = 0; i < n; i++){ p[i * 3] = (Math.random() - .5) * 46; p[i * 3 + 1] = (Math.random() - .3) * 26; p[i * 3 + 2] = -12 - Math.random() * 4; }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  var skyStars = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: .09, transparent: true, opacity: .85 }));
+  scene.add(skyStars);
+}
+const moon = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ color: 0xfff3c4 }));
+scene.add(moon);
+const hills = [['#132a5c', 6], ['#0f2149', 7], ['#0c1a3a', 5.5]].map(([c, r]) => { const m = new THREE.Mesh(new THREE.CircleGeometry(r, 64), new THREE.MeshBasicMaterial({ color: c })); scene.add(m); return m; });
+
+// glow texture
+function radialTex(inner, outer){
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  const g = x.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, inner); g.addColorStop(.35, outer); g.addColorStop(1, 'rgba(0,0,0,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 128, 128); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const glowTex = radialTex('rgba(255,220,150,1)', 'rgba(255,140,40,.45)');
+const sparkTex = radialTex('rgba(255,255,230,1)', 'rgba(255,210,90,.6)');
+
+// lantern
+const DIM = new THREE.Color('#34456e'), LIT = new THREE.Color('#ffb347'), EMIT = new THREE.Color('#ff7a1a');
+const lanternProfile = []; for(let i = 0; i <= 20; i++){ const a = i / 20; lanternProfile.push(new THREE.Vector2(.28 + .74 * Math.pow(Math.sin(Math.PI * a), .75), (a - .5) * 1.5)); }
+const bodyGeo = new THREE.LatheGeometry(lanternProfile, 36);
+const capGeo = new THREE.CylinderGeometry(.34, .34, .16, 28);
+const ribGeo = new THREE.TorusGeometry(1, .022, 6, 40);
+const tasselGeo = new THREE.ConeGeometry(.11, .42, 10);
+const goldMat = new THREE.MeshStandardMaterial({ color: 0xc89b3c, metalness: .5, roughness: .4 });
+const ribMat = new THREE.MeshStandardMaterial({ color: 0x1d2540, roughness: .9 });
+const tasselMat = new THREE.MeshStandardMaterial({ color: 0xd8432f, roughness: .8 });
+function makeLantern(){
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: DIM.clone(), emissive: new THREE.Color(0), roughness: .75, side: THREE.DoubleSide });
+  g.add(new THREE.Mesh(bodyGeo, mat));
+  for(const a of [.25, .5, .75]){ const r = .28 + .74 * Math.pow(Math.sin(Math.PI * a), .75); const rib = new THREE.Mesh(ribGeo, ribMat); rib.rotation.x = Math.PI / 2; rib.scale.setScalar(r + .005); rib.position.y = (a - .5) * 1.5; g.add(rib); }
+  const top = new THREE.Mesh(capGeo, goldMat); top.position.y = .8; g.add(top);
+  const bot = new THREE.Mesh(capGeo, goldMat); bot.position.y = -.8; g.add(bot);
+  const tas = new THREE.Mesh(tasselGeo, tasselMat); tas.position.y = -1.08; tas.rotation.x = Math.PI; g.add(tas);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 }));
+  glow.scale.setScalar(.01); glow.position.z = -.2; g.add(glow);
+  g.userData = { mat, glow, lit: 0, target: 0, phase: Math.random() * 6 };
+  return g;
+}
+function updateLantern(l, dt, t){
+  const u = l.userData;
+  u.lit += (u.target - u.lit) * Math.min(1, dt * 4);
+  u.mat.color.copy(DIM).lerp(LIT, u.lit);
+  u.mat.emissive.copy(EMIT).multiplyScalar(u.lit * (.85 + .15 * Math.sin(t * 6 + u.phase)));
+  u.glow.material.opacity = u.lit * .95;
+  u.glow.scale.setScalar(.01 + u.lit * 4.2);
+}
+
+// word sign (canvas sprite)
+const fontReady = (document.fonts && document.fonts.load) ? Promise.race([document.fonts.load('700 120px Andika'), new Promise(r => setTimeout(r, 2500))]).catch(() => {}) : Promise.resolve();
+function wordSign(text){
+  const c = document.createElement('canvas'), x = c.getContext('2d');
+  const font = '700 170px Andika, "Baloo 2", sans-serif';
+  x.font = font; const tw = x.measureText(text).width;
+  c.width = Math.ceil(tw + 140); c.height = 260;
+  x.font = font;
+  const r = 60; x.fillStyle = '#fff6df'; x.strokeStyle = '#c89b3c'; x.lineWidth = 12;
+  x.beginPath(); x.roundRect(8, 8, c.width - 16, c.height - 16, r); x.fill(); x.stroke();
+  x.fillStyle = '#2a1d10'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, c.width / 2, c.height / 2 + 8);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+  s.renderOrder = 2;
+  const h = .9, aspect = c.width / c.height, maxW = 3.3, w = Math.min(h * aspect, maxW);
+  s.scale.set(w, w / aspect, 1);
+  return s;
+}
+
+// sparkles
+const sparks = [];
+function burst(pos, n = 34){
+  for(let i = 0; i < n; i++){
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: sparkTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    s.position.copy(pos); s.scale.setScalar(.25 + Math.random() * .25);
+    const a = Math.random() * Math.PI * 2, sp = 2 + Math.random() * 3.5;
+    s.userData = { v: new THREE.Vector3(Math.cos(a) * sp, Math.sin(a) * sp + 1.5, (Math.random() - .5) * 2), life: 1 };
+    scene.add(s); sparks.push(s);
+  }
+}
+
+// tweens
+const tweens = [];
+function tween(dur, fn, done){ return new Promise(res => tweens.push({ t: 0, dur, fn, done: () => { done && done(); res(); } })); }
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+/* ================= layout ================= */
+let H = 4, W = 4, garland = [], garlandY = 3, mainPos = new THREE.Vector3(), mainScale = 1;
+const garlandLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x8a7a5a }));
+scene.add(garlandLine);
+function layout(){
+  const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false);
+  const aspect = w / h, tn = Math.tan(THREE.MathUtils.degToRad(25));
+  const dist = Math.max(8 / (2 * tn), 9 / (2 * tn * aspect));
+  camera.aspect = aspect; camera.position.set(0, 0, dist); camera.lookAt(0, 0, 0); camera.updateProjectionMatrix();
+  H = dist * tn; W = H * aspect;
+  const upp = 2 * H / h;                       // world units per pixel
+  const side = h <= 500;
+  const topU = 64 * upp, botU = (side ? 50 : 200) * upp, leftU = side ? 110 * upp : 0;
+  garlandY = H - topU - .35;
+  const gW = 2 * W - leftU - .8, n = Math.max(1, garland.length), sp = Math.min(.95, gW / n), x0 = leftU / 2 - sp * (n - 1) / 2;
+  const pts = [];
+  for(let i = -1; i <= n; i++){ const x = x0 + i * sp; pts.push(new THREE.Vector3(x, garlandY - .12 * Math.sin(Math.PI * (i + 1) / (n + 1)), -.5)); }
+  garlandLine.geometry.dispose(); garlandLine.geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-W - 1, garlandY + .3, -.5), ...pts, new THREE.Vector3(W + 1, garlandY + .3, -.5)]);
+  garland.forEach((l, i) => { l.position.set(pts[i + 1].x, pts[i + 1].y - .38, -.5); l.scale.setScalar(Math.min(.3, sp * .33)); });
+  const top = garlandY - .9, bottom = -H + botU, avail = top - bottom;
+  mainScale = Math.max(.55, Math.min(2.4, avail / 2.9, (2 * W - leftU - .6) / 3.4));
+  mainPos.set(leftU / 2, (top + bottom) / 2 + .05 * mainScale, 0);
+  if(main && !main.userData.flying) { main.position.copy(mainPos); main.scale.setScalar(mainScale); }
+  moon.position.set(W * 1.25 - 2.2, -H * 1.25 + 1.2, -10);
+  hills[0].position.set(-W * .9, -H - 4.2, -3); hills[1].position.set(W * .8, -H - 5.3, -3.5); hills[2].position.set(0, -H - 4.4, -2);
+  $('#heard').style.bottom = side ? '10px' : '148px';
+}
+addEventListener('resize', layout);
+
+/* ================= listening (artifact dictation, else browser speech recognition) ================= */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let dict = null, listening = false, wantListen = false, rec = null, micBroken = false;
+const inArtifact = !!(window.claude && window.claude.use);
+let dictStatus = inArtifact ? 'waiting' : 'not used';
+function refreshMic(){ updateMicUI(); if(game.state === 'menu') buildMenu(); }
+if(inArtifact){
+  window.claude.use('dictation').then(d => {
+    dict = d; dictStatus = d ? 'ready' : 'not offered'; if(!d){ refreshMic(); return; }
+    d.onPartial(e => onHeard(e.text, false));
+    d.onFinal(e => onHeard(e.text, true));
+    d.onState(e => { listening = e.state === 'listening' || e.state === 'starting'; if(e.state === 'idle'){ wantListen = false; clearTimeout(startTimer); if(e.reason && e.reason !== 'stopped') showHeard('mic stopped: ' + e.reason); if(e.reason === 'not_granted' || e.reason === 'unavailable'){ micBroken = true; } } updateMicUI(); });
+    refreshMic();
+  }).catch(e => { dictStatus = 'error'; refreshMic(); });
+}
+const secure = window.isSecureContext !== false;
+function micAvailable(){ return secure && !micBroken && (inArtifact ? (dictStatus === 'ready' || dictStatus === 'waiting') : !!SR); }
+let startTimer = 0;
+function startListening(){
+  ac();
+  clearTimeout(startTimer);
+  startTimer = setTimeout(() => { if(wantListen && !listening){ stopListening(); showMsg('Mic did not start 😕', true); showHeard('Tap 🎤 again, or a grown-up taps 👍'); } }, 7000);
+  if(inArtifact){
+    if(!dict){ clearTimeout(startTimer); showMsg('Mic getting ready… tap again', true); return; }
+    wantListen = true; dict.start().catch(err => { wantListen = false; clearTimeout(startTimer); showHeard('mic problem: ' + (err && err.code)); if(err && (err.code === 'not_granted' || err.code === 'unavailable')) micBroken = true; updateMicUI(); });
+    updateMicUI(); return;
+  }
+  if(!SR){ micBroken = true; updateMicUI(); return; }
+  wantListen = true;
+  if(!rec){
+    rec = new SR(); rec.lang = 'en-IN'; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 5;
+    rec.onstart = () => { listening = true; updateMicUI(); };
+    rec.onresult = e => {
+      for(let i = e.resultIndex; i < e.results.length; i++){
+        const r = e.results[i], alts = []; for(let j = 0; j < r.length; j++) alts.push(r[j].transcript);
+        onHeard(alts, r.isFinal);
+      }
+    };
+    rec.onerror = e => { if(e.error && e.error !== 'no-speech' && e.error !== 'aborted') showHeard('mic problem: ' + e.error); if(e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'audio-capture'){ micBroken = true; wantListen = false; clearTimeout(startTimer); updateMicUI(); buildMenu(); showHeard(e.error === 'audio-capture' ? 'No microphone found' : 'Mic is blocked. Allow the microphone for this site in Chrome.'); } };
+    rec.onend = () => { listening = false; updateMicUI(); if(wantListen) setTimeout(() => { if(wantListen) try{ rec.start(); }catch(e){} }, 250); };
+  }
+  try{ rec.start(); }catch(e){}
+  updateMicUI();
+}
+function stopListening(){
+  wantListen = false;
+  if(dict){ try{ dict.stop().catch(() => {}); }catch(e){} }
+  if(rec){ try{ rec.stop(); }catch(e){} }
+  listening = false; updateMicUI();
+}
+function updateMicUI(){
+  const m = $('#mic'), lab = $('#micLabel');
+  m.classList.toggle('on', listening || wantListen);
+  m.classList.toggle('off', !micAvailable());
+  lab.textContent = !micAvailable() ? 'No mic here' : (listening ? 'Listening…' : (wantListen ? 'Starting…' : 'Tap, then read'));
+}
+
+/* ================= matching ================= */
+function words(s){ return String(s || '').toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(Boolean); }
+function lev(a, b){
+  const m = a.length, n = b.length, d = Array.from({ length: m + 1 }, (_, i) => [i]);
+  for(let j = 1; j <= n; j++) d[0][j] = j;
+  for(let i = 1; i <= m; i++) for(let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[m][n];
+}
+function matches(heardList, target){
+  const t = key(target).replace(/[^a-z0-9 ]/g, ''), ok = [t, ...(SOUNDS_LIKE[t] || [])];
+  for(const h of heardList){
+    const ws = words(h); if(!ws.length) continue;
+    const joined = ws.join(' ');
+    if(ok.includes(joined) || ok.includes(ws.join(''))) return true;
+    for(const w of ws){
+      if(ok.includes(w)) return true;
+      if(t.length >= LEVENSHTEIN_FROM && lev(w, t) <= 1) return true;
+    }
+  }
+  return false;
+}
+
+/* ================= game ================= */
+const game = { state: 'menu', list: null, listKey: '', round: [], idx: 0, stars: 0, misses: 0, helped: false, results: [] };
+let main = null, lockUntil = 0;
+const msgEl = $('#msg'), heardEl = $('#heard');
+let msgTimer = 0, heardTimer = 0;
+function showMsg(t, soft){ msgEl.textContent = t; msgEl.classList.toggle('soft', !!soft); msgEl.classList.add('show'); clearTimeout(msgTimer); msgTimer = setTimeout(() => msgEl.classList.remove('show'), 1300); }
+function showHeard(text, partial){
+  if(!text){ return; }
+  heardEl.innerHTML = '🎤 I heard: <b></b>'; heardEl.querySelector('b').textContent = text + (partial ? '…' : '');
+  heardEl.classList.add('show'); clearTimeout(heardTimer); heardTimer = setTimeout(() => heardEl.classList.remove('show'), 2600);
+}
+
+function onHeard(input, isFinal){
+  const list = Array.isArray(input) ? input : [input];
+  const first = (list[0] || '').trim();
+  if(game.state !== 'ask' || performance.now() < lockUntil) return;
+  if(first) showHeard(first, !isFinal);
+  const w = game.round[game.idx];
+  if(matches(list, w)){ success(false); return; }
+  if(isFinal && first){ miss(); }
+}
+
+function miss(){
+  game.misses++; sfx.miss();
+  const s = stats[key(game.round[game.idx])] || (stats[key(game.round[game.idx])] = { ok: 0, miss: 0 });
+  s.miss++; store.set('stats', stats);
+  showMsg(['Try again!', 'Almost! Once more', 'Read it again!'][game.misses % 3], true);
+  if(main){ const base = main.rotation.z; tween(.5, t => { main.rotation.z = base + Math.sin(t * Math.PI * 4) * .12 * (1 - t); }); }
+  if(game.misses >= HELP_AFTER_MISSES) $('#hear').classList.add('nudge');
+}
+
+async function success(byGrownUp){
+  if(game.state !== 'ask') return;
+  game.state = 'celebrate';
+  const w = game.round[game.idx], k = key(w);
+  const star = !game.helped && game.misses < 2;
+  if(star) game.stars++;
+  $('#stars').textContent = '⭐ ' + game.stars;
+  const s = stats[k] || (stats[k] = { ok: 0, miss: 0 }); s.ok++; s.last = 'lit'; store.set('stats', stats);
+  game.results.push({ w, lit: true });
+  $('#hear').classList.remove('nudge');
+  sfx.lit(); showMsg(star ? ['Super! ⭐', 'Wow! ⭐', 'You did it! ⭐', 'Brilliant! ⭐'][Math.random() * 4 | 0] : 'Yes! Well done!');
+  main.userData.target = 1;
+  burst(main.position.clone().add(new THREE.Vector3(0, 0, .8)));
+  await tween(1.0, () => {});
+  await flyToGarland(true);
+  next();
+}
+
+function skip(){
+  if(game.state !== 'ask') return;
+  game.state = 'celebrate'; sfx.tap();
+  const w = game.round[game.idx], k = key(w);
+  const s = stats[k] || (stats[k] = { ok: 0, miss: 0 }); s.last = 'skip'; s.miss++; store.set('stats', stats);
+  game.results.push({ w, lit: false });
+  $('#hear').classList.remove('nudge');
+  flyToGarland(false).then(next);
+}
+
+async function flyToGarland(lit){
+  const slot = garland[game.idx], l = main;
+  l.userData.flying = true;
+  const from = l.position.clone(), s0 = l.scale.x, to = slot.position.clone(), s1 = slot.scale.x;
+  l.userData.sign && (l.userData.sign.material.opacity = 1);
+  await tween(.8, t => { const e = ease(t); l.position.lerpVectors(from, to, e); l.position.y += Math.sin(Math.PI * e) * .6; l.scale.setScalar(s0 + (s1 - s0) * e); if(l.userData.sign) l.userData.sign.material.opacity = 1 - e; });
+  scene.remove(l); main = null;
+  slot.userData.target = lit ? 1 : 0; slot.userData.lit = lit ? 1 : 0;
+  if(lit) burst(slot.position.clone(), 10);
+}
+
+function next(){
+  game.idx++;
+  if(game.idx >= game.round.length){ finish(); return; }
+  showWord();
+}
+
+function showWord(){
+  const w = game.round[game.idx];
+  game.misses = 0; game.helped = false;
+  const l = makeLantern(); const sign = wordSign(shown(w)); sign.position.set(0, 0, 1.15); l.add(sign); l.userData.sign = sign;
+  main = l; scene.add(l);
+  l.scale.setScalar(mainScale);
+  const to = mainPos.clone(), from = to.clone().add(new THREE.Vector3(0, -H * 1.4, 0));
+  l.position.copy(from); l.userData.flying = true;
+  tween(.7, t => { l.position.lerpVectors(from, to, ease(t)); }, () => { l.userData.flying = false; game.state = 'ask'; lockUntil = performance.now() + 350; });
+}
+
+function chooseRound(words){
+  const fresh = [], tricky = [], known = [];
+  for(const w of shuffle(words)){ const s = stats[key(w)]; if(!s || !s.ok) (s && s.miss ? tricky : fresh).push(w); else if(s.last !== 'lit') tricky.push(w); else known.push(w); }
+  return shuffle([...tricky, ...fresh, ...known].slice(0, WORDS_PER_ROUND));
+}
+
+function startRound(listName, words){
+  ac();
+  game.listKey = listName; game.list = words; game.round = chooseRound(words); game.idx = 0; game.stars = 0; game.results = [];
+  $('#listName').textContent = listName; $('#stars').textContent = '⭐ 0';
+  garland.forEach(l => scene.remove(l)); garland = game.round.map(() => { const l = makeLantern(); scene.add(l); return l; });
+  layout();
+  $('#menu').classList.remove('show'); $('#end').classList.remove('show');
+  game.state = 'intro';
+  showWord();
+  if(!listening && !wantListen && micAvailable()) setTimeout(() => showMsg('Tap 🎤 and read!', true), 900);
+}
+
+function finish(){
+  game.state = 'end'; stopListening(); sfx.end();
+  const lit = game.results.filter(r => r.lit).length, n = game.results.length;
+  const best = store.get('best-' + game.listKey, 0); if(game.stars > best) store.set('best-' + game.listKey, game.stars);
+  $('#endTitle').textContent = lit === n ? 'All lanterns lit! 🎉' : lit >= n / 2 ? 'Well done! 🏮' : 'Good try! 🌙';
+  $('#endSub').textContent = `You lit ${lit} of ${n} lanterns and got ${game.stars} ⭐` + (game.stars > best ? ' (new best!)' : '');
+  const box = $('#endWords'); box.innerHTML = '';
+  for(const r of game.results){ const s = document.createElement('span'); s.textContent = shown(r.w); if(r.lit) s.className = 'lit'; box.appendChild(s); }
+  $('#dimBtn').style.display = lit < n ? '' : 'none';
+  setTimeout(() => $('#end').classList.add('show'), 700);
+  speak(lit === n ? 'Wow! All the lanterns are shining!' : 'Well done! You lit ' + lit + ' lanterns!');
+}
+
+function trickyWords(){
+  const all = [...new Set(WORD_LISTS.flatMap(l => l.words))];
+  return all.filter(w => { const s = stats[key(w)]; return s && s.last && s.last !== 'lit'; });
+}
+
+function buildMenu(){
+  const box = $('#lists'); box.innerHTML = '';
+  const add = (name, words, special, label) => {
+    const b = document.createElement('button'); if(special) b.className = 'special';
+    const litN = words.filter(w => (stats[key(w)] || {}).ok).length, best = store.get('best-' + name, 0);
+    b.innerHTML = '<span></span><small></small>';
+    b.firstChild.textContent = label || name;
+    b.lastChild.textContent = `🏮 ${litN} of ${words.length} lit` + (best ? `  ·  best ⭐ ${best}` : '');
+    b.onclick = () => { sfx.tap(); startRound(name, words); };
+    box.appendChild(b);
+  };
+  WORD_LISTS.slice().reverse().forEach(l => add(l.name, l.words));
+  if(WORD_LISTS.length > 1) add('All words', [...new Set(WORD_LISTS.flatMap(l => l.words))], true, '🌟 All words');
+  const tr = trickyWords(); if(tr.length) add('Tricky words', tr, true, '🔁 Tricky words');
+  $('#caseBtn').textContent = lowerCase ? 'Letters: abc  (tap for Abc)' : 'Letters: Abc  (tap for abc)';
+  $('#note').textContent = !secure ? 'The mic only works when this game is opened from its web link (https) in Chrome, not as a downloaded file. Here a grown-up can tap 👍 for a correct reading.' : micAvailable() ? 'The 🎤 needs permission the first time. A grown-up can tap 👍 if the mic misses a correct reading.'
+    : 'The microphone does not work in this browser (try Chrome). A grown-up can tap 👍 for a correct reading.';
+  $('#note').textContent += '  (Mic: ' + (inArtifact ? 'Claude dictation ' + dictStatus : SR ? 'browser speech' : 'none') + (micBroken ? ', blocked' : '') + ')';
+}
+
+function toMenu(){
+  stopListening(); game.state = 'menu';
+  if(main){ scene.remove(main); main = null; }
+  $('#end').classList.remove('show'); $('#menu').classList.add('show'); buildMenu();
+}
+
+/* ================= buttons ================= */
+$('#mic').addEventListener('click', () => {
+  if(!micAvailable()){ showMsg(secure ? 'Grown-up: tap 👍' : 'Open the web link for the mic', true); return; }
+  if(listening || wantListen) stopListening(); else startListening();
+});
+$('#hear').addEventListener('click', async () => {
+  if(game.state !== 'ask') return;
+  game.helped = true; $('#hear').classList.remove('nudge');
+  lockUntil = Infinity;
+  const k = key(game.round[game.idx]);
+  await speak(SAY_AS[k] || k, .75);
+  lockUntil = performance.now() + 1500;
+  showMsg('Now you say it!', true);
+});
+$('#okBtn').addEventListener('click', () => { if(game.state === 'ask') success(true); });
+$('#skipBtn').addEventListener('click', skip);
+$('#homeBtn').addEventListener('click', () => { sfx.tap(); toMenu(); });
+$('#menuBtn').addEventListener('click', () => { sfx.tap(); toMenu(); });
+$('#againBtn').addEventListener('click', () => { sfx.tap(); startRound(game.listKey, game.list); });
+$('#dimBtn').addEventListener('click', () => { sfx.tap(); const dim = game.results.filter(r => !r.lit).map(r => r.w); startRound(game.listKey + ' (dark ones)', dim); });
+$('#caseBtn').addEventListener('click', () => { lowerCase = !lowerCase; store.set('lower', lowerCase); sfx.tap(); buildMenu(); });
+const muteBtn = $('#muteBtn');
+muteBtn.textContent = muted ? '🔇' : '🔊';
+muteBtn.addEventListener('click', () => { muted = !muted; store.set('muted', muted); muteBtn.textContent = muted ? '🔇' : '🔊'; if(muted && 'speechSynthesis' in window) speechSynthesis.cancel(); });
+
+/* ================= loop ================= */
+const clock = new THREE.Clock();
+function frame(){
+  const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
+  for(let i = tweens.length - 1; i >= 0; i--){ const tw = tweens[i]; tw.t += dt; const p = Math.min(1, tw.t / tw.dur); tw.fn(p); if(p >= 1){ tweens.splice(i, 1); tw.done(); } }
+  if(main){ updateLantern(main, dt, t); if(!main.userData.flying){ main.position.y = mainPos.y + Math.sin(t * 1.6) * .07 * mainScale; main.rotation.y = Math.sin(t * .8) * .12; } }
+  garland.forEach((l, i) => { updateLantern(l, dt, t); l.rotation.z = Math.sin(t * 1.3 + i) * .05; });
+  for(let i = sparks.length - 1; i >= 0; i--){ const s = sparks[i], u = s.userData; u.life -= dt * 1.1; u.v.y -= 5 * dt; s.position.addScaledVector(u.v, dt); s.material.opacity = Math.max(0, u.life); if(u.life <= 0){ scene.remove(s); s.material.dispose(); sparks.splice(i, 1); } }
+  skyStars.material.opacity = .75 + .15 * Math.sin(t * .9);
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+fontReady.then(() => { layout(); buildMenu(); updateMicUI(); frame(); });
+
+// test hook
+window.__test = { game, hear: (t, fin = true) => onHeard(t, fin), matches, get main(){ return main; }, garland: () => garland, lists: WORD_LISTS };
+</script>
+</body>
+</html>

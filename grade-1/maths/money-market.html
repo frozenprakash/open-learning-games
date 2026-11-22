@@ -1,0 +1,1630 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#ff9f1c">
+<title>Money Market</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
+<!--
+  🛒 MONEY MARKET — Grade 1 maths game
+  Shop in a little toy-and-snack shop: know your coins, count money, pay exactly, find the change.
+  Works with mouse (computer) and touch (phone/tablet).
+  To change the questions, prices or shop items, scroll to "EASY-TO-EDIT SETTINGS" in the script below.
+-->
+<style>
+  :root {
+    --ink: #1d3557;
+    --card: rgba(255, 255, 255, 0.94);
+    --pink: #ff4d6d;
+    --saffron: #ff9f1c;
+    --good: #2a9d8f;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #ffd89a;
+    font-family: "Baloo 2", "Comic Sans MS", "Chalkboard SE", system-ui, sans-serif; color: var(--ink); }
+  canvas { display: block; touch-action: none; }
+
+  #topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 5; pointer-events: none;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: calc(8px + env(safe-area-inset-top)) 12px 0; }
+  .chip { pointer-events: auto; background: var(--card); color: var(--ink); border: 0; border-radius: 999px;
+    min-height: 44px; min-width: 44px; padding: 4px 14px; font: inherit; font-size: 20px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 3px 0 rgba(0,0,0,.13); }
+  button.chip { cursor: pointer; touch-action: manipulation; }
+  #stats { gap: 14px; }
+  #starCount.bump { animation: bump .5s; display: inline-block; }
+  @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.7); } 100% { transform: scale(1); } }
+
+  #qcard { position: fixed; z-index: 5; left: 50%; transform: translateX(-50%);
+    top: calc(62px + env(safe-area-inset-top)); width: min(92vw, 640px);
+    background: var(--card); border-radius: 22px; padding: 6px 16px 8px; text-align: center; cursor: pointer;
+    box-shadow: 0 5px 0 rgba(0,0,0,.13); }
+  #qcard.enter { animation: cardIn .35s ease-out; }
+  @keyframes cardIn { from { transform: translateX(-50%) scale(.85); opacity: .3; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+  #qtext { font-size: clamp(30px, 8vw, 50px); font-weight: 800; line-height: 1.15; }
+  #qsub { font-size: clamp(16px, 4.2vw, 22px); font-weight: 600; opacity: .85; min-height: 1.3em; line-height: 1.3; }
+  #qsub.hinting { color: #b5179e; opacity: 1; font-weight: 800; }
+
+  #toast { position: fixed; z-index: 6; left: 50%; top: 46%; transform: translate(-50%, -50%) scale(0);
+    font-size: clamp(36px, 10vw, 64px); font-weight: 800; color: #fff; white-space: nowrap; pointer-events: none;
+    text-shadow: 0 4px 0 var(--good), 0 8px 16px rgba(0,0,0,.25); }
+  #toast.soft { text-shadow: 0 4px 0 #e76f51, 0 8px 16px rgba(0,0,0,.25); }
+  #toast.show { animation: toastIn 1.3s ease-out forwards; }
+  @keyframes toastIn {
+    0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+    20% { transform: translate(-50%, -50%) scale(1.15); }
+    35% { transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; }
+    100% { transform: translate(-50%, -60%) scale(1); opacity: 0; }
+  }
+
+  /* answer chips and the pay bar, along the bottom */
+  #bottom { position: fixed; z-index: 5; left: 0; right: 0; bottom: calc(12px + env(safe-area-inset-bottom));
+    display: flex; justify-content: center; pointer-events: none; padding: 0 8px; }
+  #answers, #paybar { pointer-events: auto; display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .ans { font: inherit; font-size: clamp(28px, 8vw, 40px); font-weight: 800; min-width: 80px; height: 74px; padding: 0 14px;
+    border: 0; border-radius: 22px; background: #fff; color: var(--ink); cursor: pointer; touch-action: manipulation;
+    box-shadow: 0 6px 0 rgba(0,0,0,.22); line-height: 1; }
+  .ans:active, .big:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.2); }
+  .ans.wrong { opacity: .35; filter: grayscale(1); animation: shake .4s; }
+  .ans.hint { background: #ffe066; animation: pulse .8s ease-in-out infinite; }
+  .ans.right { background: #8ac926; color: #fff; }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+  #total { font-size: 28px; min-height: 64px; padding: 4px 20px; pointer-events: none; }
+  #total b { font-size: 34px; }
+  #payBtn { font-size: 32px; padding: 10px 30px; background: var(--good); min-height: 70px; }
+  #payBtn.pulse { animation: pulse .8s ease-in-out infinite; background: #f4a100; }
+
+  .overlay { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 14px; padding: 24px 16px; text-align: center;
+    background: rgba(255, 216, 154, .42); }
+  .overlay h1 { margin: 0; font-size: clamp(42px, 12vw, 80px); line-height: 1; color: #fff;
+    text-shadow: 0 5px 0 #e85d04, 0 8px 18px rgba(0,0,0,.25); }
+  .overlay .say { margin: 0; font-size: clamp(18px, 4.8vw, 24px); font-weight: 600;
+    background: var(--card); padding: 6px 18px; border-radius: 16px; }
+  .levels { display: flex; flex-direction: column; gap: 12px; width: min(88vw, 400px); margin-top: 6px; }
+  .lvl { font: inherit; border: 0; border-radius: 22px; padding: 10px 18px; color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left;
+    box-shadow: 0 6px 0 rgba(0,0,0,.2); touch-action: manipulation; text-shadow: 0 2px 0 rgba(0,0,0,.18); }
+  .lvl:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.2); }
+  .lvl b { font-size: 28px; display: block; line-height: 1.1; }
+  .lvl small { font-size: 15px; font-weight: 600; }
+  .lvl .best { font-size: 20px; white-space: nowrap; }
+  .dim { filter: grayscale(1); opacity: .35; }
+  .big { font: inherit; font-size: 26px; font-weight: 800; border: 0; border-radius: 20px; padding: 10px 28px;
+    color: #fff; background: var(--pink); cursor: pointer; box-shadow: 0 6px 0 rgba(0,0,0,.2); touch-action: manipulation; }
+  .big.alt { background: #fff; color: var(--ink); }
+  #bigstars { font-size: clamp(60px, 17vw, 104px); letter-spacing: 6px; line-height: 1.1; }
+  #newbest { color: #fff; font-weight: 800; font-size: 24px; text-shadow: 0 3px 0 var(--good); }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .hidden { display: none !important; }
+  @media (max-height: 500px) { /* phone turned sideways */
+    #qcard { top: calc(56px + env(safe-area-inset-top)); width: min(64vw, 560px); padding: 2px 12px 4px; }
+    #qtext { font-size: 28px; }
+    #qsub { font-size: 16px; }
+    #bottom { bottom: calc(8px + env(safe-area-inset-bottom)); }
+    .ans { height: 58px; font-size: 30px; min-width: 76px; }
+    #total { min-height: 54px; font-size: 22px; }
+    #total b { font-size: 28px; }
+    #payBtn { font-size: 26px; padding: 6px 24px; min-height: 58px; }
+    .overlay { gap: 8px; padding: 10px; }
+    .overlay h1 { font-size: 40px; }
+    .overlay h1 br { display: none; }
+    .levels { flex-direction: row; width: min(96vw, 780px); }
+    .lvl { flex: 1; flex-direction: column; align-items: flex-start; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+
+<div id="topbar">
+  <button class="chip hidden" id="homeBtn" aria-label="Home">🏠</button>
+  <div class="chip hidden" id="stats"><span>⭐ <span id="starCount">0</span></span><span id="qnum">1 / 10</span></div>
+  <button class="chip" id="muteBtn" aria-label="Sound on or off">🔊</button>
+</div>
+
+<div id="qcard" class="hidden" title="Tap to hear the question again">
+  <div id="qtext"></div>
+  <div id="qsub"></div>
+</div>
+
+<div id="toast"></div>
+
+<div id="bottom">
+  <div id="answers" class="hidden"></div>
+  <div id="paybar" class="hidden">
+    <div class="chip" id="total"></div>
+    <button class="big" id="payBtn">Pay 💰</button>
+  </div>
+</div>
+
+<div class="overlay" id="startScreen">
+  <h1>🛒 Money<br>Market</h1>
+  <p class="say">Shop with coins and notes!</p>
+  <div class="levels" id="levels"></div>
+</div>
+
+<div class="overlay hidden" id="endScreen">
+  <h1>Shop closed!</h1>
+  <div id="bigstars"></div>
+  <p class="say" id="endmsg"></p>
+  <div id="newbest" class="hidden">🏆 New best score!</div>
+  <div class="row">
+    <button class="big" id="againBtn">Play again</button>
+    <button class="big alt" id="levelBtn">Change level</button>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+/* =====================================================================
+   EASY-TO-EDIT SETTINGS
+   ===================================================================== */
+const QUESTIONS_PER_ROUND = 10;
+
+// Your own questions. If this list has ANY question in it, the game uses ONLY these.
+// Money: 1, 2, 5, 10 are coins; 20 and 50 are notes; 'n10' is a ₹10 note.
+// Items: ball, car, kite, pencil, banana, icecream, laddoo, balloon, drum, book
+const MY_QUESTIONS = [
+  // { type: 'coin',   value: 5 },                              // Tap the ₹5 coin!
+  // { type: 'count',  money: [5, 2, 1] },                      // How much money is this?
+  // { type: 'pay',    item: 'kite', price: 8 },                // Pay ₹8 with coins
+  // { type: 'more',   items: [['kite', 12], ['ball', 9]] },    // Which costs more?
+  // { type: 'canBuy', item: 'kite', price: 12, have: 10 },     // You have ₹10. Can you buy it?
+  // { type: 'change', item: 'car', price: 15, paid: 20 },      // How much change?
+  // { q: '₹5 + ₹3 = ?', say: 'What is 5 rupees and 3 rupees?', a: 8 },  // any number question
+];
+
+// The shop. price = [cheapest, dearest]; the game picks a price in this range that suits the level.
+const SHOP_ITEMS = [
+  { kind: 'ball',     name: 'ball',       emoji: '⚽', price: [3, 20] },
+  { kind: 'car',      name: 'toy car',    emoji: '🚗', price: [8, 50] },
+  { kind: 'kite',     name: 'kite',       emoji: '🪁', price: [4, 30] },
+  { kind: 'pencil',   name: 'pencil',     emoji: '✏️', price: [1, 9] },
+  { kind: 'banana',   name: 'bananas',    emoji: '🍌', price: [2, 12] },
+  { kind: 'icecream', name: 'ice-cream',  emoji: '🍦', price: [5, 25] },
+  { kind: 'laddoo',   name: 'laddoos',    emoji: '🟠', price: [3, 20] },
+  { kind: 'balloon',  name: 'balloon',    emoji: '🎈', price: [1, 6] },
+  { kind: 'drum',     name: 'drum',       emoji: '🥁', price: [15, 50] },
+  { kind: 'book',     name: 'story book', emoji: '📘', price: [10, 45] },
+];
+
+// Question types: coin, count, pay, more, canBuy, change (a type listed twice comes up twice as often)
+// Money keys: c1 c2 c5 c10 = coins, n10 n20 n50 = notes
+const LEVELS = {
+  easy:   { name: 'Easy',   emoji: '🐣', color: '#5fa61d', blurb: 'Know your coins · count & pay to ₹10',
+            types: ['coin', 'coin', 'count', 'count', 'count', 'pay', 'pay', 'pay'],
+            coinChoices: ['c1', 'c2', 'c5', 'c10'], countMoney: ['c1', 'c2'], countRange: [3, 10], countPieces: [2, 6],
+            payRange: [2, 10], tray: ['c1', 'c2', 'c5'], chips: 3 },
+  medium: { name: 'Medium', emoji: '🐯', color: '#f08c00', blurb: 'Count & pay to ₹20 · costs more?',
+            types: ['count', 'count', 'pay', 'pay', 'pay', 'more', 'more', 'canBuy', 'canBuy'],
+            countMoney: ['c1', 'c2', 'c5', 'c10'], countRange: [8, 20], countPieces: [2, 5],
+            payRange: [6, 20], tray: ['c1', 'c2', 'c5', 'c10'], moreMax: 20, chips: 4 },
+  hard:   { name: 'Hard',   emoji: '🦁', color: '#e63946', blurb: 'Notes · pay to ₹50 · change',
+            types: ['pay', 'pay', 'pay', 'change', 'change', 'change', 'count', 'more'],
+            countMoney: ['c1', 'c2', 'c5', 'c10', 'n10', 'n20'], countRange: [15, 50], countPieces: [2, 5],
+            payRange: [15, 50], tray: ['c1', 'c2', 'c5', 'c10', 'n10', 'n20'], moreMax: 50,
+            changeFrom: [10, 20, 50], fewestBonus: true, chips: 4 },
+};
+
+const PRAISE = ['Great job!', 'Super!', 'Well done!', 'Awesome!', 'You got it!', 'Fantastic!', 'Brilliant!', 'Shabaash!'];
+
+/* =====================================================================
+   HELPERS
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const V3 = THREE.Vector3;
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch { /* private mode: ignore */ } },
+};
+const rs = n => n === 1 ? '1 rupee' : `${n} rupees`;
+const cap = s => s[0].toUpperCase() + s.slice(1);
+const listSay = arr => arr.length < 2 ? arr.join('') : arr.slice(0, -1).join(', ') + ' and ' + arr[arr.length - 1];
+
+// Money
+const MONEY = {
+  c1:  { v: 1,  note: false, r: 0.40, metal: 'silver' },
+  c2:  { v: 2,  note: false, r: 0.46, metal: 'silver' },
+  c5:  { v: 5,  note: false, r: 0.49, metal: 'gold' },
+  c10: { v: 10, note: false, r: 0.56, metal: 'bi' },
+  n10: { v: 10, note: true, color: '#e3a86f', dark: '#6e3d14' },
+  n20: { v: 20, note: true, color: '#cfe07a', dark: '#4d5e12' },
+  n50: { v: 50, note: true, color: '#86d4e6', dark: '#155f70' },
+};
+const NOTE_W = 1.8, NOTE_H = 0.9;
+const mkey = x => typeof x === 'string' ? x : (x >= 20 ? 'n' + x : 'c' + x);
+const mval = k => MONEY[k].v;
+const msize = k => MONEY[k].note ? { w: NOTE_W, h: NOTE_H } : { w: MONEY[k].r * 2, h: MONEY[k].r * 2 };
+const sumMoney = keys => keys.reduce((a, k) => a + mval(k), 0);
+const byValue = (a, b) => mval(b) - mval(a) || (MONEY[b].note ? 1 : 0) - (MONEY[a].note ? 1 : 0);
+const moneyName = k => MONEY[k].note ? `${mval(k)} rupee note` : `${mval(k)} rupee coin`;
+
+function greedy(amount, keys) {
+  const out = [], ks = [...keys].sort(byValue);
+  for (const k of ks) while (amount >= mval(k)) { out.push(k); amount -= mval(k); }
+  return out;
+}
+function randomMoney(keys, lo, hi, minP, maxP) {
+  for (let i = 0; i < 400; i++) {
+    const set = Array.from({ length: rnd(minP, maxP) }, () => pick(keys));
+    const s = sumMoney(set);
+    if (s >= lo && s <= hi) return set.sort(byValue);
+  }
+  return greedy(lo, keys);
+}
+// Break a few big coins into smaller ones so the child has to count
+function splitMoney(keys, maxPieces = 5) {
+  const out = [...keys];
+  const SPLIT = { c10: ['c5', 'c5'], c5: ['c2', 'c2', 'c1'], c2: ['c1', 'c1'] };
+  for (let g = 0; g < 6 && out.length < maxPieces; g++) {
+    const i = out.findIndex(k => SPLIT[k] && Math.random() < 0.6);
+    if (i < 0) continue;
+    const parts = SPLIT[out[i]];
+    if (out.length - 1 + parts.length > maxPieces) break;
+    out.splice(i, 1, ...parts);
+  }
+  return out.sort(byValue);
+}
+function makeOptions(ans, count, lo, hi, near = []) {
+  const opts = new Set([ans]);
+  for (const c of shuffle([...near, ans - 1, ans + 1, ans - 2, ans + 2])) {
+    if (opts.size >= count) break;
+    if (c >= lo && c <= hi) opts.add(c);
+  }
+  for (let guard = 0; opts.size < count && guard < 200; guard++) opts.add(rnd(lo, hi));
+  return [...opts].sort((a, b) => a - b);
+}
+const itemByKind = kind => SHOP_ITEMS.find(i => i.kind === kind) || SHOP_ITEMS[0];
+function itemFor(price, avoid = []) {
+  const ok = SHOP_ITEMS.filter(i => price >= i.price[0] && price <= i.price[1] && !avoid.includes(i.kind));
+  return pick(ok.length ? ok : SHOP_ITEMS.filter(i => !avoid.includes(i.kind)));
+}
+
+/* =====================================================================
+   QUESTION MAKERS
+   ===================================================================== */
+const GEN = {
+  coin(L, p = {}) {
+    const key = p.value ? mkey(p.value) : pick(L.coinChoices || ['c1', 'c2', 'c5', 'c10']);
+    let set = (L.coinChoices || ['c1', 'c2', 'c5', 'c10']).slice();
+    if (!set.includes(key)) set[0] = key;
+    const v = mval(key), what = MONEY[key].note ? 'note' : 'coin';
+    return { type: 'coin', key, set: shuffle(set), text: `Tap the ₹${v} ${what}!`, sub: 'Look at the number on each one',
+      say: `Can you find the ${moneyName(key)}? Tap it!` };
+  },
+  count(L, p = {}) {
+    const money = p.money ? p.money.map(mkey).sort(byValue)
+      : randomMoney(L.countMoney, L.countRange[0], L.countRange[1], L.countPieces[0], L.countPieces[1]);
+    const a = sumMoney(money), hi = Math.max(L.countRange[1] + 5, a + 5);
+    const near = L.countRange[1] > 10 ? [a + 5, a - 5, a + 10, a - 10] : [];
+    return { type: 'count', money, a, options: makeOptions(a, L.chips || 4, 1, hi, near), money_: true,
+      text: 'How much money?', sub: 'Tap each coin to count', say: 'How much money is this? Tap the coins to count them.' };
+  },
+  pay(L, p = {}) {
+    const price = p.price ?? rnd(L.payRange[0], L.payRange[1]);
+    const item = p.item ? itemByKind(p.item) : itemFor(price);
+    const bonus = !!L.fewestBonus;
+    return { type: 'pay', item, price, text: `Pay ₹${price}`,
+      sub: bonus ? 'Tap money, then Pay · Bonus: fewest coins!' : 'Tap coins to put them on the counter, then Pay',
+      say: `The ${item.name} costs ${rs(price)}. Tap the money to pay ${rs(price)}, then press Pay.` + (bonus ? ' Can you use the fewest coins and notes?' : '') };
+  },
+  more(L, p = {}) {
+    let A, B, x, y;
+    if (p.items) { [[A, x], [B, y]] = p.items; A = itemByKind(A); B = itemByKind(B); }
+    else {
+      const max = L.moreMax || 20;
+      x = rnd(2, max);
+      do { y = rnd(Math.max(1, x - 9), Math.min(max, x + 9)); } while (y === x);
+      A = itemFor(x); B = itemFor(y, [A.kind]);
+    }
+    const big = x > y ? 0 : 1, items = [[A, x], [B, y]];
+    const [BI, bp] = items[big], [, sp] = items[1 - big];
+    return { type: 'more', items, a: big, text: 'Which costs more?', sub: `${cap(A.name)} ₹${x} or ${B.name} ₹${y}?`,
+      say: `Which costs more? The ${A.name} for ${rs(x)}, or the ${B.name} for ${rs(y)}? Tap it!`,
+      hintText: `₹${bp} is more than ₹${sp}. Tap the ${BI.name}!`,
+      hintSay: `${rs(bp)} is more than ${rs(sp)}. The ${BI.name} costs more. Tap it!`,
+      doneSay: `Yes! The ${BI.name} costs more.` };
+  },
+  canBuy(L, p = {}) {
+    const max = L.moreMax || 20;
+    const have = p.have ?? rnd(5, max);
+    const yes = p.price !== undefined ? p.price <= have : Math.random() < 0.5;
+    const price = p.price ?? (yes ? rnd(Math.max(1, have - 7), have) : rnd(have + 1, have + 7));
+    const item = p.item ? itemByKind(p.item) : itemFor(price);
+    const money = splitMoney(greedy(have, ['c10', 'c5', 'c2', 'c1']), 5);
+    const ok = have >= price;
+    return { type: 'canBuy', item, price, have, money, a: ok ? 'yes' : 'no',
+      options: [{ label: 'Yes 👍', v: 'yes' }, { label: 'No 👎', v: 'no' }],
+      text: 'Can you buy it?', sub: `You have ₹${have} · ${cap(item.name)} costs ₹${price}`,
+      say: `You have ${rs(have)}. Can you buy the ${item.name} for ${rs(price)}?`,
+      hintText: ok ? `₹${have} is enough for ₹${price} — Yes!` : `₹${have} is less than ₹${price} — No!`,
+      hintSay: ok ? `${rs(have)} is ${have === price ? 'just' : 'more than'} enough for ${rs(price)}. Yes, you can buy it!`
+                  : `${rs(have)} is less than ${rs(price)}. No, not enough money.`,
+      doneSay: ok ? `Yes! You can buy the ${item.name}.` : `That's right! We need more money for the ${item.name}.` };
+  },
+  change(L, p = {}) {
+    const paid = p.paid ?? pick(L.changeFrom || [10, 20]);
+    let change, price;
+    if (p.price !== undefined) { price = p.price; change = paid - price; }
+    else { change = rnd(1, Math.min(paid - 1, paid === 20 ? 15 : 20)); price = paid - change; }
+    const item = p.item ? itemByKind(p.item) : itemFor(price);
+    const paidMoney = paid === 10 ? [pick(['n10', 'c10'])] : paid === 20 ? ['n20'] : paid === 50 ? ['n50'] : greedy(paid, ['n50', 'n20', 'n10', 'c5', 'c2', 'c1']);
+    const near = [change + 5, change - 5, change + 10, price <= 40 ? price : change + 3];
+    return { type: 'change', item, price, paid, paidMoney, a: change, options: makeOptions(change, L.chips || 4, 1, 25, near),
+      change: greedy(change, ['c10', 'c5', 'c2', 'c1']),
+      text: 'How much change?', sub: `${cap(item.name)} costs ₹${price} · You pay ₹${paid}`,
+      say: `The ${item.name} costs ${rs(price)}. You pay ${rs(paid)}. How much change do you get back?`,
+      hintText: `₹${paid} − ₹${price} = ₹${change}`,
+      hintSay: `${paid} take away ${price} is ${change}. You get ${rs(change)} back.`,
+      doneSay: `Yes! Here is your change: ${rs(change)}.` };
+  },
+};
+
+function fromMine(m, L) {
+  if (m.type && GEN[m.type]) return GEN[m.type](L, m);
+  return { type: 'num', text: m.q, sub: '', say: m.say || m.q, a: m.a, options: makeOptions(m.a, L.chips || 4, 0, Math.max(10, m.a + 5)) };
+}
+function makeQuestion(L, recent) {
+  const forced = window.__test?.forceTypes?.shift(); // testing only
+  if (forced) return GEN[forced](L);
+  for (let i = 0; i < 25; i++) {
+    const q = MY_QUESTIONS.length ? fromMine(pick(MY_QUESTIONS), L) : GEN[pick(L.types)](L);
+    if (!recent.includes(q.text + q.sub) || i === 24) return q;
+  }
+}
+
+/* =====================================================================
+   SOUND + VOICE
+   ===================================================================== */
+let muted = store.get('mm-muted') === '1';
+let actx = null;
+function audio() {
+  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; } }
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+function tone(freq, dur = 0.15, type = 'sine', vol = 0.16, when = 0) {
+  if (muted) return; const ac = audio(); if (!ac) return;
+  const t = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+function noise(dur, ftype, freq, vol, when = 0) {
+  if (muted) return; const ac = audio(); if (!ac) return;
+  const len = Math.floor(ac.sampleRate * dur), buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+  const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+  src.buffer = buf; f.type = ftype; f.frequency.value = freq; g.gain.value = vol;
+  src.connect(f).connect(g).connect(ac.destination); src.start(ac.currentTime + when);
+}
+const sfx = {
+  clink() { const f = 2300 + Math.random() * 500; tone(f, 0.08, 'sine', 0.1); tone(f * 1.5, 0.12, 'sine', 0.06, 0.02); tone(f * 0.62, 0.1, 'triangle', 0.05); },
+  clinkBack() { tone(1500, 0.08, 'sine', 0.09); tone(1100, 0.1, 'triangle', 0.06, 0.05); },
+  swish() { noise(0.16, 'bandpass', 2200, 0.5); },
+  chaching() {
+    noise(0.07, 'highpass', 3500, 0.6); noise(0.09, 'highpass', 2600, 0.5, 0.09);
+    [2093, 2637, 3136, 4186].forEach((f, i) => tone(f, 1.0 - i * 0.18, 'sine', 0.12 - i * 0.022, 0.19));
+    tone(1568, 0.7, 'triangle', 0.07, 0.2);
+  },
+  correct() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.2, 'triangle', 0.14, 0.05 + i * 0.08)); },
+  wrong() { tone(260, 0.22, 'sine', 0.14); tone(196, 0.3, 'sine', 0.12, 0.12); },
+  tick(n) { tone(480 + n * 40, 0.12, 'triangle', 0.14); },
+  fanfare() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, 0.28, 'triangle', 0.14, i * 0.14)); },
+};
+
+let voice = null;
+const hasSpeech = 'speechSynthesis' in window;
+function pickVoice() {
+  const vs = speechSynthesis.getVoices();
+  voice = vs.find(v => v.lang === 'en-IN') || vs.find(v => /^en[-_]IN/i.test(v.lang)) || vs.find(v => v.lang === 'en-GB') || vs.find(v => /^en/.test(v.lang)) || null;
+}
+if (hasSpeech) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function say(text) {
+  if (muted || !hasSpeech || !text) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text.replace(/₹(\d+)/g, (m, n) => rs(Number(n))).replace(/−/g, ' minus '));
+  if (voice) u.voice = voice;
+  u.lang = voice ? voice.lang : 'en-IN'; u.rate = 0.88; u.pitch = 1.1;
+  speechSynthesis.speak(u);
+}
+
+const muteBtn = $('muteBtn');
+const showMute = () => { muteBtn.textContent = muted ? '🔇' : '🔊'; };
+showMute();
+muteBtn.onclick = () => {
+  muted = !muted; store.set('mm-muted', muted ? '1' : '0'); showMute();
+  if (muted && hasSpeech) speechSynthesis.cancel();
+};
+
+/* =====================================================================
+   3D BASICS
+   ===================================================================== */
+await Promise.race([document.fonts.load('800 64px "Baloo 2"', '₹ 0 1 2 3 4 5 6 7 8 9 Pay'), new Promise(r => setTimeout(r, 2500))]).catch(() => {});
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.body.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xffd89a);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 300);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xffd6a0, 0.9));
+const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
+sunLight.position.set(3, 6, 8);
+scene.add(sunLight);
+
+const FONT = px => `800 ${px}px "Baloo 2", "Arial Rounded MT Bold", Arial, sans-serif`;
+function canvasTex(w, h, draw) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return t;
+}
+function rrect(g, x, y, w, h, r) {
+  g.beginPath(); g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r);
+  g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h); g.lineTo(x + r, y + h);
+  g.quadraticCurveTo(x, y + h, x, y + h - r); g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.closePath();
+}
+const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0, ...o });
+const mesh = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); return m; };
+const hitMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+const SHARED_MATS = new Set([hitMat]);
+function disposeTree(obj) {
+  obj.traverse(o => {
+    if (o.userData.shared) return;
+    if (o.geometry && !o.isSprite) o.geometry.dispose();
+    if (o.material) [].concat(o.material).forEach(m => { if (!SHARED_MATS.has(m)) { m.map?.dispose(); m.dispose(); } });
+  });
+}
+
+/* ---------- labels, tags, mats (drawn on canvases) ---------- */
+function label(text, { size = 0.42, color = '#1d3557', bg = '#ffffff', border = null } = {}) {
+  const H = 140, fs = 92, pad = 34;
+  const meas = document.createElement('canvas').getContext('2d'); meas.font = FONT(fs);
+  const W = Math.ceil(meas.measureText(text).width + pad * 2);
+  const tex = canvasTex(W, H, g => {
+    if (bg) { rrect(g, 5, 5, W - 10, H - 10, (H - 10) / 2); g.fillStyle = bg; g.fill(); }
+    if (border) { g.lineWidth = 8; g.strokeStyle = border; g.stroke(); }
+    g.font = FONT(fs); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = color;
+    g.fillText(text, W / 2, H * 0.56);
+  });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(size * W / H, size), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+  m.userData.w = size * W / H;
+  return m;
+}
+function priceTag(p) {
+  const tex = canvasTex(320, 200, (g, W, H) => {
+    g.save(); g.translate(0, 0);
+    rrect(g, 14, 14, W - 28, H - 28, 34); g.fillStyle = '#fffbe8'; g.fill();
+    g.lineWidth = 12; g.strokeStyle = '#e63946'; g.stroke();
+    g.beginPath(); g.arc(52, H / 2, 15, 0, Math.PI * 2); g.fillStyle = '#e63946'; g.fill();
+    g.beginPath(); g.arc(52, H / 2, 7, 0, Math.PI * 2); g.fillStyle = '#fffbe8'; g.fill();
+    const t = '₹' + p; g.font = FONT(t.length > 2 ? 100 : 116); g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = '#c1121f'; g.fillText(t, W * 0.6, H * 0.56); g.restore();
+  });
+  return new THREE.Mesh(new THREE.PlaneGeometry(1.34, 0.84), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+}
+function matMesh(w, h, { fill = '#fff4d6', stroke = '#e9b949', dash = false, pattern = null } = {}) {
+  const px = 128, W = Math.round(w * px), H = Math.round(h * px);
+  const tex = canvasTex(W, H, g => {
+    rrect(g, 6, 6, W - 12, H - 12, 40); g.fillStyle = fill; g.fill();
+    if (pattern === 'felt') {
+      g.save(); g.clip(); g.globalAlpha = 0.08; g.fillStyle = '#000';
+      for (let i = 0; i < W * H / 260; i++) g.fillRect(Math.random() * W, Math.random() * H, 2, 2);
+      g.restore();
+    }
+    g.lineWidth = 10; g.strokeStyle = stroke;
+    if (dash) { rrect(g, 22, 22, W - 44, H - 44, 30); g.setLineDash([26, 18]); g.stroke(); g.setLineDash([]); }
+    else { rrect(g, 6, 6, W - 12, H - 12, 40); g.stroke(); if (pattern === 'felt') { g.lineWidth = 4; g.setLineDash([12, 10]); g.strokeStyle = 'rgba(255,255,255,.55)'; rrect(g, 24, 24, W - 48, H - 48, 28); g.stroke(); g.setLineDash([]); } }
+  });
+  return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, roughness: 1, transparent: true }));
+}
+
+/* ---------- coins & notes ---------- */
+function coinFaceTex(m) {
+  return canvasTex(256, 256, (g, S) => {
+    const C = S / 2;
+    const metal = (r, kind) => {
+      const gr = g.createRadialGradient(C * 0.72, C * 0.62, r * 0.1, C, C, r);
+      if (kind === 'gold') { gr.addColorStop(0, '#fff6c8'); gr.addColorStop(0.55, '#f3c845'); gr.addColorStop(1, '#c08a12'); }
+      else { gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.55, '#dce1e7'); gr.addColorStop(1, '#9ba6b2'); }
+      g.fillStyle = gr; g.beginPath(); g.arc(C, C, r, 0, Math.PI * 2); g.fill();
+    };
+    metal(C, m.metal === 'gold' ? 'gold' : 'silver');
+    if (m.metal === 'bi') metal(C * 0.7, 'gold');
+    g.fillStyle = 'rgba(0,0,0,.16)';
+    for (let i = 0; i < 40; i++) { const a = i / 40 * Math.PI * 2; g.beginPath(); g.arc(C + Math.cos(a) * C * 0.9, C + Math.sin(a) * C * 0.9, S * 0.011, 0, 7); g.fill(); }
+    if (m.metal !== 'bi') { g.strokeStyle = 'rgba(0,0,0,.16)'; g.lineWidth = S * 0.016; g.beginPath(); g.arc(C, C, C * 0.8, 0, 7); g.stroke(); }
+    const txt = '₹' + m.v, fs = txt.length > 2 ? S * 0.38 : S * 0.5;
+    g.font = FONT(fs); g.textAlign = 'center'; g.textBaseline = 'middle';
+    const ink = m.metal === 'silver' ? '#26313d' : '#5c3800';
+    g.fillStyle = 'rgba(255,255,255,.9)'; g.fillText(txt, C - 3, C + S * 0.04 - 3);
+    g.fillStyle = ink; g.fillText(txt, C, C + S * 0.04);
+  });
+}
+function noteTex(m) {
+  return canvasTex(512, 256, (g, W, H) => {
+    rrect(g, 0, 0, W, H, 16); g.fillStyle = m.color; g.fill(); g.save(); g.clip();
+    g.globalAlpha = 0.13; g.fillStyle = m.dark;
+    for (let x = -H; x < W; x += 26) { g.beginPath(); g.moveTo(x, H); g.lineTo(x + 12, H); g.lineTo(x + 12 + H, 0); g.lineTo(x + H, 0); g.fill(); }
+    g.restore(); g.globalAlpha = 1;
+    g.strokeStyle = m.dark; g.lineWidth = 7; rrect(g, 14, 14, W - 28, H - 28, 12); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.6)'; g.beginPath(); g.arc(W * 0.22, H / 2, H * 0.3, 0, 7); g.fill();
+    g.fillStyle = m.dark; g.globalAlpha = 0.75;
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; g.beginPath(); g.ellipse(W * 0.22 + Math.cos(a) * H * 0.12, H / 2 + Math.sin(a) * H * 0.12, H * 0.09, H * 0.045, a, 0, 7); g.fill(); }
+    g.beginPath(); g.arc(W * 0.22, H / 2, H * 0.05, 0, 7); g.fill(); g.globalAlpha = 1;
+    g.font = FONT(H * 0.6); g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = 'rgba(255,255,255,.7)'; g.fillText('₹' + m.v, W * 0.64 - 3, H * 0.56 - 3);
+    g.fillStyle = m.dark; g.fillText('₹' + m.v, W * 0.64, H * 0.56);
+    g.font = FONT(H * 0.17); g.fillText(String(m.v), W * 0.9, H * 0.22); g.fillText(String(m.v), W * 0.1, H * 0.8);
+  });
+}
+const RES = {};
+function res(k) {
+  if (RES[k]) return RES[k];
+  const m = MONEY[k], R = {};
+  if (!m.note) {
+    R.body = new THREE.CylinderGeometry(m.r, m.r, 0.13, 48); R.body.rotateX(Math.PI / 2);
+    R.bodyMat = std(m.metal === 'gold' ? 0xe5b53a : 0xc9d1da, { metalness: 0.8, roughness: 0.28 });
+    R.face = new THREE.CircleGeometry(m.r * 0.995, 48);
+    R.faceMat = new THREE.MeshStandardMaterial({ map: coinFaceTex(m), metalness: 0.3, roughness: 0.4 });
+    R.hit = new THREE.CircleGeometry(Math.max(m.r * 1.2, 0.58), 20);
+  } else {
+    R.body = new THREE.BoxGeometry(NOTE_W, NOTE_H, 0.025);
+    R.bodyMat = std(m.color, { roughness: 0.85 });
+    R.face = new THREE.PlaneGeometry(NOTE_W, NOTE_H);
+    R.faceMat = new THREE.MeshStandardMaterial({ map: noteTex(m), roughness: 0.8 });
+    R.hit = new THREE.PlaneGeometry(NOTE_W + 0.2, NOTE_H + 0.3);
+  }
+  SHARED_MATS.add(R.bodyMat); SHARED_MATS.add(R.faceMat);
+  return RES[k] = R;
+}
+Object.keys(MONEY).forEach(res);
+
+// visual only (a tilted coin/note); `withHit` adds a generous invisible tap area
+function moneyVisual(k, withHit = true) {
+  const R = res(k), m = MONEY[k], tilt = new THREE.Group();
+  const body = new THREE.Mesh(R.body, R.bodyMat), face = new THREE.Mesh(R.face, R.faceMat);
+  face.position.z = m.note ? 0.0135 : 0.066;
+  body.userData.shared = face.userData.shared = true;
+  tilt.add(body, face);
+  if (withHit) { const hit = new THREE.Mesh(R.hit, hitMat); hit.position.z = 0.12; hit.userData.shared = true; tilt.add(hit); tilt.userData.hit = hit; }
+  tilt.rotation.set(m.note ? -0.12 : -0.22, 0.14, m.note ? 0.05 : 0);
+  return tilt;
+}
+
+/* ---------- movers: everything that pops in, slides and hops ---------- */
+let movers = [];
+const halos = [];
+function mover(parent, opts = {}) {
+  const g = new THREE.Group(), inner = new THREE.Group();
+  g.add(inner); parent.add(g);
+  const m = { g, inner, tp: new V3(), ts: 1, s: 0.001, sv: 0, hop: 0, shake: 0, spin: 0, dying: false, dieIn: -1,
+    speed: 11, phase: Math.random() * 6.28, ...opts };
+  g.userData.mover = m; g.scale.setScalar(0.001);
+  movers.push(m);
+  return m;
+}
+function moneyMover(parent, k) {
+  const m = mover(parent, { key: k, value: mval(k) });
+  m.tilt = moneyVisual(k); m.inner.add(m.tilt); m.hit = m.tilt.userData.hit;
+  return m;
+}
+function halo(parent, r, z = -0.12) {
+  const h = new THREE.Mesh(new THREE.RingGeometry(r * 0.98, r * 1.42, 48),
+    new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.9, depthWrite: false }));
+  h.position.z = z; parent.add(h); halos.push(h);
+  return h;
+}
+
+/* =====================================================================
+   SHOP SCENERY
+   ===================================================================== */
+const play = new THREE.Group(); scene.add(play);
+
+function woodTex(base = '#b86b2e') {
+  const t = canvasTex(256, 256, (g, W, H) => {
+    const tones = ['#b86b2e', '#c47a3a', '#ad6328', '#c98443'];
+    for (let i = 0; i < 4; i++) { g.fillStyle = tones[(i + (base === '#b86b2e' ? 0 : 1)) % 4]; g.fillRect(i * W / 4, 0, W / 4, H); }
+    g.strokeStyle = 'rgba(70,30,5,.25)'; g.lineWidth = 2;
+    for (let i = 0; i < 40; i++) { const x = Math.random() * W; g.beginPath(); g.moveTo(x, 0); g.bezierCurveTo(x + 6, H * 0.3, x - 6, H * 0.6, x + 3, H); g.stroke(); }
+    g.fillStyle = 'rgba(60,25,5,.45)'; for (let i = 1; i < 4; i++) g.fillRect(i * W / 4 - 2, 0, 4, H);
+  });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
+
+/* ---------- items for sale (built from simple shapes) ---------- */
+const BUILD = {
+  ball() {
+    const tex = canvasTex(512, 256, (g, W, H) => {
+      ['#ff4d6d', '#ffffff', '#ffd60a', '#ffffff', '#3a86ff', '#ffffff'].forEach((c, i) => { g.fillStyle = c; g.fillRect(i * W / 6, 0, W / 6 + 1, H); });
+      g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H * 0.08); g.fillRect(0, H * 0.92, W, H * 0.08);
+    });
+    const g = new THREE.Group();
+    const s = mesh(new THREE.SphereGeometry(0.66, 40, 28), std(0xffffff, { map: tex, roughness: 0.25 }));
+    s.rotation.set(0.6, 0.3, 0.4); g.add(s); g.userData.spinner = s;
+    return g;
+  },
+  car() {
+    const g = new THREE.Group(), red = std(0xe63946, { roughness: 0.3 }), glass = std(0x9ad7ff, { roughness: 0.1 });
+    g.add(mesh(new RoundedBoxGeometry(1.6, 0.45, 0.8, 3, 0.14), red, 0, 0, 0));
+    g.add(mesh(new RoundedBoxGeometry(0.85, 0.45, 0.7, 3, 0.14), std(0xff6b6b, { roughness: 0.3 }), -0.1, 0.38, 0));
+    g.add(mesh(new THREE.BoxGeometry(0.66, 0.26, 0.74), glass, -0.1, 0.42, 0));
+    g.add(mesh(new THREE.BoxGeometry(0.89, 0.26, 0.5), glass, -0.1, 0.42, 0));
+    const wheelG = new THREE.CylinderGeometry(0.22, 0.22, 0.16, 24); wheelG.rotateX(Math.PI / 2);
+    const hubG = new THREE.CylinderGeometry(0.1, 0.1, 0.18, 16); hubG.rotateX(Math.PI / 2);
+    const black = std(0x222222, { roughness: 0.8 }), silver = std(0xdddddd, { metalness: 0.6, roughness: 0.3 });
+    for (const x of [-0.5, 0.5]) for (const z of [-0.38, 0.38]) { g.add(mesh(wheelG, black, x, -0.24, z)); g.add(mesh(hubG, silver, x, -0.24, z)); }
+    const lamp = std(0xfff3a0, { emissive: 0xffe066, emissiveIntensity: 0.5 });
+    for (const z of [-0.25, 0.25]) g.add(mesh(new THREE.SphereGeometry(0.08, 12, 10), lamp, 0.8, 0.05, z));
+    g.rotation.set(0.3, -0.55, 0);
+    return g;
+  },
+  kite() {
+    const g = new THREE.Group(), T = 0.8, B = -0.6, Wd = 0.62, Mi = 0.18;
+    const tri = (pts, color) => { const sh = new THREE.Shape(); sh.moveTo(...pts[0]); sh.lineTo(...pts[1]); sh.lineTo(...pts[2]); sh.closePath();
+      return mesh(new THREE.ShapeGeometry(sh), std(color, { side: THREE.DoubleSide, roughness: 0.6 })); };
+    const c = [0, Mi];
+    g.add(tri([[0, T], [Wd, Mi], c], 0xff006e), tri([[0, T], [-Wd, Mi], c], 0xffbe0b), tri([[0, B], [Wd, Mi], c], 0xffbe0b), tri([[0, B], [-Wd, Mi], c], 0xff006e));
+    const stick = std(0x8d5524);
+    g.add(mesh(new THREE.BoxGeometry(0.035, T - B, 0.035), stick, 0, (T + B) / 2, 0.02));
+    g.add(mesh(new THREE.BoxGeometry(Wd * 2, 0.035, 0.035), stick, 0, Mi, 0.02));
+    const pts = []; for (let i = 0; i <= 20; i++) { const u = i / 20; pts.push(new V3(Math.sin(u * 7) * 0.12 + u * 0.25, B - u * 0.75, 0)); }
+    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x6c757d })));
+    const bowG = new THREE.ConeGeometry(0.07, 0.15, 8);
+    [5, 11, 17].forEach((i, j) => { const p = pts[i], col = std([0x3a86ff, 0x8ac926, 0xff006e][j]);
+      const a = mesh(bowG, col, p.x - 0.07, p.y, 0), b = mesh(bowG, col, p.x + 0.07, p.y, 0); a.rotation.z = -Math.PI / 2; b.rotation.z = Math.PI / 2; g.add(a, b); });
+    g.rotation.set(0.1, 0.35, -0.2);
+    return g;
+  },
+  pencil() {
+    const g = new THREE.Group();
+    g.add(mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.3, 6), std(0xffc300, { roughness: 0.4 }), 0, 0, 0));
+    const tip = mesh(new THREE.ConeGeometry(0.15, 0.34, 6), std(0xf1c27d), 0, -0.82, 0); tip.rotation.x = Math.PI; g.add(tip);
+    const lead = mesh(new THREE.ConeGeometry(0.055, 0.12, 12), std(0x333333), 0, -0.95, 0); lead.rotation.x = Math.PI; g.add(lead);
+    g.add(mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.12, 16), std(0xcfd8dc, { metalness: 0.6, roughness: 0.3 }), 0, 0.71, 0));
+    g.add(mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.2, 16), std(0xff8fab), 0, 0.87, 0));
+    g.rotation.set(0.3, 0, -0.8);
+    return g;
+  },
+  banana() {
+    const g = new THREE.Group(), yel = std(0xffd60a, { roughness: 0.45 }), brown = std(0x6b4226);
+    for (let i = 0; i < 3; i++) {
+      const arc = Math.PI * 0.75, b = new THREE.Group();
+      const t = mesh(new THREE.TorusGeometry(0.55, 0.14, 12, 28, arc), yel); t.rotation.z = -Math.PI / 2 - arc / 2; b.add(t);
+      for (const s of [-1, 1]) { const a = -Math.PI / 2 + s * arc / 2; b.add(mesh(new THREE.SphereGeometry(0.07, 8, 6), brown, Math.cos(a) * 0.55, Math.sin(a) * 0.55, 0)); }
+      b.rotation.z = (i - 1) * 0.28; b.position.set((i - 1) * 0.08, 0.35, (i - 1) * 0.12); g.add(b);
+    }
+    g.add(mesh(new THREE.CylinderGeometry(0.06, 0.09, 0.3, 8), std(0x7a8b3a), 0.42, 0.32, 0));
+    g.rotation.set(0.25, 0.2, 0);
+    return g;
+  },
+  icecream() {
+    const g = new THREE.Group();
+    const waffle = canvasTex(128, 128, (c, W, H) => { c.fillStyle = '#e0a458'; c.fillRect(0, 0, W, H); c.strokeStyle = '#b5793a'; c.lineWidth = 5;
+      for (let i = -W; i < W * 2; i += 22) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i + H, H); c.stroke(); c.beginPath(); c.moveTo(i, H); c.lineTo(i + H, 0); c.stroke(); } });
+    const cone = mesh(new THREE.ConeGeometry(0.36, 1.0, 24), std(0xffffff, { map: waffle }), 0, -0.45, 0); cone.rotation.x = Math.PI; g.add(cone);
+    g.add(mesh(new THREE.SphereGeometry(0.38, 24, 18), std(0xff8fab, { roughness: 0.6 }), 0, 0.12, 0));
+    g.add(mesh(new THREE.SphereGeometry(0.33, 24, 18), std(0x8d5524, { roughness: 0.6 }), 0.02, 0.5, 0));
+    g.add(mesh(new THREE.SphereGeometry(0.1, 12, 10), std(0xd00000, { roughness: 0.2 }), 0.04, 0.86, 0.05));
+    return g;
+  },
+  laddoo() {
+    const g = new THREE.Group();
+    const speck = canvasTex(128, 128, (c, W, H) => { c.fillStyle = '#ffa62b'; c.fillRect(0, 0, W, H);
+      for (let i = 0; i < 260; i++) { c.fillStyle = Math.random() < 0.5 ? '#ffcf5c' : '#d9781a'; c.beginPath(); c.arc(Math.random() * W, Math.random() * H, 2 + Math.random() * 2.5, 0, 7); c.fill(); } });
+    const lm = std(0xffffff, { map: speck, roughness: 0.9 }), sg = new THREE.SphereGeometry(0.27, 20, 16);
+    [[-0.52, -0.27], [0, -0.27], [0.52, -0.27], [-0.26, 0.15], [0.26, 0.15], [0, 0.57]].forEach(([x, y]) => g.add(mesh(sg, lm, x, y, 0)));
+    g.add(mesh(new THREE.CylinderGeometry(0.85, 0.72, 0.1, 32), std(0xdfe6ec, { metalness: 0.7, roughness: 0.25 }), 0, -0.56, 0));
+    g.rotation.x = 0.25;
+    return g;
+  },
+  balloon() {
+    const g = new THREE.Group(), geo = new THREE.SphereGeometry(0.5, 32, 24), p = geo.attributes.position;
+    for (let i = 0; i < p.count; i++) { const y = p.getY(i), k = y < 0 ? 1 - 0.3 * Math.pow(-y / 0.5, 1.7) : 1; p.setXYZ(i, p.getX(i) * k, y * 1.18, p.getZ(i) * k); }
+    geo.computeVertexNormals();
+    const mat = new THREE.MeshPhysicalMaterial({ color: pick([0xff4d6d, 0x3a86ff, 0x8ac926, 0xb5179e]), roughness: 0.28, clearcoat: 1 });
+    g.add(mesh(geo, mat, 0, 0.35, 0));
+    g.add(mesh(new THREE.ConeGeometry(0.07, 0.12, 10), mat, 0, -0.27, 0));
+    const pts = []; for (let i = 0; i <= 12; i++) { const t = i / 12; pts.push(new V3(Math.sin(t * 9) * 0.05, -0.32 - t * 0.7, 0)); }
+    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x5c677d })));
+    return g;
+  },
+  drum() {
+    const g = new THREE.Group();
+    const zig = canvasTex(256, 128, (c, W, H) => { c.fillStyle = '#d62828'; c.fillRect(0, 0, W, H); c.strokeStyle = '#ffd166'; c.lineWidth = 7;
+      c.beginPath(); for (let i = 0; i <= 8; i++) c.lineTo(i * W / 8, i % 2 ? H * 0.85 : H * 0.15); c.stroke(); });
+    g.add(mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.7, 32), std(0xffffff, { map: zig, roughness: 0.5 }), 0, 0, 0));
+    g.add(mesh(new THREE.CylinderGeometry(0.53, 0.53, 0.72, 32), std(0xfff1d6, { roughness: 0.8 }), 0, 0.005, 0));
+    const gold = std(0xffc300, { metalness: 0.6, roughness: 0.3 });
+    for (const y of [-0.35, 0.35]) { const t = mesh(new THREE.TorusGeometry(0.55, 0.045, 10, 36), gold, 0, y, 0); t.rotation.x = Math.PI / 2; g.add(t); }
+    const st = std(0x8d5524);
+    for (const s of [-1, 1]) {
+      const stick = new THREE.Group(); stick.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 8), st, 0, 0, 0));
+      stick.add(mesh(new THREE.SphereGeometry(0.07, 10, 8), std(0xfff1d6), 0, 0.45, 0));
+      stick.position.set(s * 0.22, 0.65, 0.1); stick.rotation.z = -s * 0.6; g.add(stick);
+    }
+    g.rotation.x = 0.4;
+    return g;
+  },
+  book() {
+    const g = new THREE.Group();
+    const cover = canvasTex(256, 320, (c, W, H) => { c.fillStyle = '#3a86ff'; c.fillRect(0, 0, W, H); c.fillStyle = '#2667cc'; c.fillRect(0, 0, 26, H);
+      c.fillStyle = '#ffd60a'; c.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 30 : 70, a = -Math.PI / 2 + i * Math.PI / 5; c.lineTo(W * 0.56 + Math.cos(a) * r, H * 0.36 + Math.sin(a) * r); } c.fill();
+      c.font = FONT(72); c.textAlign = 'center'; c.fillStyle = '#fff'; c.fillText('ABC', W * 0.56, H * 0.8); });
+    g.add(mesh(new RoundedBoxGeometry(1.05, 1.35, 0.24, 2, 0.05), std(0x2667cc), 0, 0, 0));
+    g.add(mesh(new THREE.BoxGeometry(0.98, 1.27, 0.2), std(0xfdfcf5, { roughness: 0.9 }), 0.05, 0, 0));
+    g.add(mesh(new THREE.PlaneGeometry(1.0, 1.3), std(0xffffff, { map: cover }), 0, 0, 0.125));
+    g.rotation.set(0.1, -0.4, 0.05);
+    return g;
+  },
+  jar() {
+    const g = new THREE.Group(), cols = [0xff4d6d, 0xffd60a, 0x8ac926, 0x3a86ff, 0xff9f1c];
+    const sg = new THREE.SphereGeometry(0.12, 10, 8);
+    for (let i = 0; i < 8; i++) g.add(mesh(sg, std(pick(cols), { roughness: 0.3 }), (Math.random() - 0.5) * 0.45, -0.32 + Math.random() * 0.5, (Math.random() - 0.5) * 0.3));
+    g.add(mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.9, 24, 1, true), new THREE.MeshPhysicalMaterial({ color: 0xdff6ff, transparent: true, opacity: 0.35, roughness: 0.05 }), 0, 0, 0));
+    g.add(mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.14, 24), std(pick([0xe63946, 0x2a9d8f, 0xff9f1c])), 0, 0.5, 0));
+    return g;
+  },
+};
+// Scale a model to fit a box, centred on (0,0)
+function fitModel(model, maxW, maxH) {
+  const box = new THREE.Box3().setFromObject(model), size = box.getSize(new V3()), c = box.getCenter(new V3());
+  const s = Math.min(maxW / size.x, maxH / size.y);
+  model.position.sub(c);
+  const wrap = new THREE.Group(); wrap.add(model); wrap.scale.setScalar(s);
+  return { wrap, w: size.x * s, h: size.y * s };
+}
+
+/* ---------- back wall, shelves, awning, counter ---------- */
+const backdrop = new THREE.Group(); scene.add(backdrop);
+(function buildBackdrop() {
+  const wallTex = canvasTex(256, 256, (g, W, H) => {
+    g.fillStyle = '#ffe2a8'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#ffd28a';
+    for (const [x, y] of [[0, 0], [W / 2, H / 2], [W, 0], [0, H], [W, H]]) { g.beginPath(); g.moveTo(x, y - 40); g.lineTo(x + 40, y); g.lineTo(x, y + 40); g.lineTo(x - 40, y); g.fill(); }
+    g.fillStyle = '#ffc56e'; for (const [x, y] of [[W / 2, 0], [0, H / 2], [W, H / 2], [W / 2, H]]) { g.beginPath(); g.arc(x, y, 9, 0, 7); g.fill(); }
+  });
+  wallTex.wrapS = wallTex.wrapT = THREE.RepeatWrapping; wallTex.repeat.set(10, 6);
+  backdrop.add(mesh(new THREE.PlaneGeometry(30, 18), std(0xffffff, { map: wallTex, roughness: 1 }), 0, 0, 0));
+  const shelfMat = std(0xffffff, { map: woodTex(), roughness: 0.8 });
+  const kinds = ['jar', 'ball', 'kite', 'jar', 'drum', 'book', 'jar', 'car', 'icecream', 'jar', 'laddoo', 'balloon', 'banana', 'jar', 'pencil'];
+  let n = 0;
+  for (const y of [5.6, 2.2, -1.2]) {
+    backdrop.add(mesh(new THREE.BoxGeometry(30, 0.24, 1.0), shelfMat, 0, y, 0.5));
+    for (let x = -13.5; x <= 13.5; x += 2.25) {
+      const kind = kinds[(n++ * 7 + Math.floor(y)) % kinds.length];
+      const { wrap, h } = fitModel(BUILD[kind](), kind === 'jar' ? 0.9 : 1.3, kind === 'jar' ? 1.15 : 1.25);
+      wrap.position.set(x + (Math.random() - 0.5) * 0.3, y + 0.12 + h / 2, 0.55);
+      backdrop.add(wrap);
+    }
+  }
+})();
+
+const awning = new THREE.Group(); scene.add(awning);
+(function buildAwning() {
+  const N = 90, Wd = 0.7, half = new THREE.CircleGeometry(Wd / 2, 18, Math.PI, Math.PI);
+  const reds = new THREE.InstancedMesh(half, std(0xe63946, { roughness: 0.7 }), N / 2), whites = new THREE.InstancedMesh(half, std(0xfff4e0, { roughness: 0.7 }), N / 2);
+  const stripe = canvasTex(64, 16, (g, W, H) => { g.fillStyle = '#e63946'; g.fillRect(0, 0, W / 2, H); g.fillStyle = '#fff4e0'; g.fillRect(W / 2, 0, W / 2, H); });
+  stripe.wrapS = THREE.RepeatWrapping; stripe.repeat.set(N / 2, 1);
+  awning.add(mesh(new THREE.PlaneGeometry(N * Wd, 1.0), std(0xffffff, { map: stripe, roughness: 0.7 }), Wd / 2, 0.5, 0));
+  const m4 = new THREE.Matrix4();
+  for (let i = 0; i < N; i++) { m4.makeTranslation((i - N / 2) * Wd + Wd / 2, 0, 0.01); (i % 2 ? whites : reds).setMatrixAt(i >> 1, m4); }
+  awning.add(reds, whites);
+})();
+
+const counter = new THREE.Group(); scene.add(counter);
+const counterFront = (() => {
+  const t = woodTex(); t.repeat.set(18, 1);
+  const front = mesh(new THREE.BoxGeometry(70, 1, 0.4), std(0xffffff, { map: t, roughness: 0.75 }), 0, 0, 0);
+  counter.add(front);
+  const band = canvasTex(128, 32, (g, W, H) => { g.fillStyle = '#2a9d8f'; g.fillRect(0, 0, W, H);
+    ['#ffd166', '#ef476f', '#ffd166', '#ef476f'].forEach((c, i) => { g.fillStyle = c; g.beginPath(); g.moveTo(i * W / 4, H * 0.15); g.lineTo(i * W / 4 + W / 8, H * 0.85); g.lineTo((i + 1) * W / 4, H * 0.15); g.fill(); }); });
+  band.wrapS = THREE.RepeatWrapping; band.repeat.set(60, 1);
+  const strip = mesh(new THREE.PlaneGeometry(70, 0.42), std(0xffffff, { map: band, roughness: 0.7 }), 0, 0, 0.21);
+  counter.add(strip);
+  const top = mesh(new THREE.BoxGeometry(70, 0.3, 1.3), std(0xd99a5b, { roughness: 0.6 }), 0, 0, 0);
+  counter.add(top);
+  return { front, strip, top };
+})();
+
+/* ---------- the shopkeeper ---------- */
+const keeper = (() => {
+  const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const skin = std(0xc98b5a, { roughness: 0.65 }), vest = std(0x2a9d8f, { roughness: 0.55 }), kurta = std(0xffb347, { roughness: 0.6 });
+  const dark = std(0x2b1d0e, { roughness: 0.7 }), white = std(0xffffff, { roughness: 0.25 }), gold = std(0xffc300, { metalness: 0.5, roughness: 0.3 });
+  body.add(mesh(new THREE.CylinderGeometry(0.66, 0.8, 2.0, 32), vest, 0, 0.25, 0));
+  body.add(mesh(new THREE.BoxGeometry(0.32, 1.9, 0.12), kurta, 0, 0.27, 0.68));
+  for (const y of [1.0, 0.62, 0.24]) body.add(mesh(new THREE.SphereGeometry(0.06, 10, 8), gold, 0, y, 0.76));
+  const collar = mesh(new THREE.TorusGeometry(0.3, 0.08, 10, 24), kurta, 0, 1.26, 0); collar.rotation.x = Math.PI / 2; body.add(collar);
+  body.add(mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.25, 16), skin, 0, 1.36, 0));
+  const head = new THREE.Group(); head.position.y = 1.95; body.add(head);
+  head.add(mesh(new THREE.SphereGeometry(0.62, 32, 24), skin));
+  for (const s of [-1, 1]) head.add(mesh(new THREE.SphereGeometry(0.14, 12, 10), skin, s * 0.6, 0, 0));
+  const hair = mesh(new THREE.SphereGeometry(0.645, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.42), dark, 0, 0.02, -0.04); hair.rotation.x = -0.3; head.add(hair);
+  const capM = mesh(new THREE.CylinderGeometry(0.48, 0.58, 0.3, 32), std(0xe63946, { roughness: 0.6 }), 0, 0.55, -0.06); capM.rotation.x = -0.15; head.add(capM);
+  const band = mesh(new THREE.TorusGeometry(0.575, 0.045, 8, 32), gold, 0, 0.42, -0.04); band.rotation.x = Math.PI / 2 - 0.15; head.add(band);
+  const eyes = [];
+  for (const s of [-1, 1]) {
+    const e = new THREE.Group(); e.position.set(s * 0.22, 0.1, 0.53);
+    const w = mesh(new THREE.SphereGeometry(0.13, 16, 12), white); w.scale.z = 0.6; e.add(w);
+    e.add(mesh(new THREE.SphereGeometry(0.075, 12, 10), std(0x1b1b1b, { roughness: 0.2 }), 0, -0.01, 0.07));
+    e.add(mesh(new THREE.SphereGeometry(0.025, 8, 6), white, 0.03, 0.02, 0.135));
+    head.add(e); eyes.push(e);
+    const brow = mesh(new THREE.BoxGeometry(0.2, 0.05, 0.05), dark, s * 0.22, 0.31, 0.56); brow.rotation.z = -s * 0.12; head.add(brow);
+    const mus = mesh(new THREE.CapsuleGeometry(0.055, 0.2, 4, 8), dark, s * 0.13, -0.17, 0.59); mus.rotation.z = s * (Math.PI / 2 - 0.35); head.add(mus);
+    const cheek = mesh(new THREE.SphereGeometry(0.1, 12, 10), std(0xff8fa3, { roughness: 0.8 }), s * 0.37, -0.1, 0.46); cheek.scale.z = 0.4; head.add(cheek);
+  }
+  head.add(mesh(new THREE.SphereGeometry(0.1, 12, 10), std(0xb8774a), 0, -0.04, 0.62));
+  const smile = mesh(new THREE.TorusGeometry(0.17, 0.035, 8, 20, Math.PI), std(0x8b1e3f), 0, -0.26, 0.55); smile.rotation.z = Math.PI; head.add(smile);
+  const arms = [];
+  for (const s of [-1, 1]) {
+    const sh = new THREE.Group(); sh.position.set(s * 0.68, 1.0, 0);
+    sh.add(mesh(new THREE.CapsuleGeometry(0.17, 0.6, 4, 12), kurta, 0, -0.42, 0));
+    sh.add(mesh(new THREE.SphereGeometry(0.17, 14, 12), skin, 0, -0.85, 0));
+    sh.rotation.set(-0.9, 0, s * 0.18); body.add(sh); arms.push(sh);
+  }
+  return { root, body, head, eyes, arms, mood: '', moodT: 0, blink: 2 };
+})();
+// keeper block: visible part from the counter line (waist) up to the cap
+const KEEPER = { w: 2.3, h: 2.75 };
+const keeperM = mover(scene, { z: -3.5 });
+keeperM.inner.add(keeper.root); keeper.root.position.y = -KEEPER.h / 2;
+keeperM.ts = 1;
+function keeperMood(m) { keeper.mood = m; keeper.moodT = m === 'happy' ? 1.6 : 1.2; }
+function keeperHand() { // where the right hand is, in z=0 screen-plane units
+  const f = depthF(keeperM.z);
+  return new V3((keeperM.tp.x + 0.75 * keeperM.ts) / f, (keeperM.tp.y + 0.1 * keeperM.ts) / f, 0.6);
+}
+
+/* =====================================================================
+   SCREEN FIT
+   ===================================================================== */
+const TAN = Math.tan(THREE.MathUtils.degToRad(25));
+const view = { w: 16, h: 9, dist: 10 };
+const halfH = z => TAN * (view.dist - z);
+const depthF = z => (view.dist - z) / view.dist;
+let counterY = -2;
+
+function layout() {
+  const aspect = window.innerWidth / window.innerHeight;
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = aspect;
+  view.dist = Math.max(9 / (2 * TAN), 7 / (2 * TAN * aspect));
+  view.h = 2 * TAN * view.dist; view.w = view.h * aspect;
+  camera.position.set(0, 0, view.dist); camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix();
+  const bh = halfH(-6), bs = Math.max(2 * bh * aspect / 30, 2 * bh / 18) * 1.02;
+  backdrop.position.set(0, 0, -6); backdrop.scale.setScalar(bs);
+  const ah = halfH(-1.5), as = Math.max(0.75, ah / 6);
+  awning.position.set(0, ah - 1.05 * as, -1.5); awning.scale.setScalar(as);
+  arrange();
+}
+
+const pxToY = px => view.h / 2 - (px / window.innerHeight) * view.h;
+function zones() {
+  const card = $('qcard'), bot = $('bottom');
+  const topPx = card.classList.contains('hidden') ? 70 : card.offsetTop + card.offsetHeight + 10;
+  const botPx = bot.offsetHeight > 0 ? bot.offsetTop - 10 : window.innerHeight - 14;
+  return { top: pxToY(topPx), bottom: pxToY(botPx) };
+}
+function setCounter(y) {
+  counterY = y;
+  const f = depthF(-1), top = y * f, bottom = -halfH(-1) - 1;
+  counter.position.set(0, 0, -1);
+  counterFront.top.position.y = top - 0.15;
+  counterFront.strip.position.y = top - 0.55;
+  const h = Math.max(0.5, top - 0.3 - bottom);
+  counterFront.front.scale.y = h; counterFront.front.position.y = top - 0.3 - h / 2;
+  counterFront.front.material.map.repeat.set(18, 1);
+}
+function place(m, x, y, s, z = m.z || 0) {
+  const f = depthF(z);
+  m.tp.set(x * f, y * f, z); m.ts = s * f;
+}
+
+/* ---------- arrange the question's blocks on screen ---------- */
+let blocks = [];
+const GAP = 0.4, SMAX = 1.35, SMAX_SIDE = 1.75;
+function arrange() {
+  const Z = zones(), M = 0.3;
+  const W = view.w - 2 * M, H = Z.top - Z.bottom;
+  if (!blocks.length) {   // menu / end screen / number question: just the shopkeeper
+    keeperM.g.visible = true;
+    if (view.w / view.h < 1) {
+      const s = Math.min(1.3, view.h * 0.2 / KEEPER.h), cy = game.playing ? Z.bottom + (Z.top - Z.bottom) * 0.35 : -view.h / 2 + view.h * 0.05;
+      place(keeperM, 0, cy + KEEPER.h * s / 2, s); setCounter(cy);
+    } else {
+      const s = Math.min(1.4, view.h * 0.42 / KEEPER.h), cy = game.playing ? (Z.top + Z.bottom) / 2 - KEEPER.h * s / 2 : -view.h * 0.22;
+      place(keeperM, game.playing ? 0 : view.w * 0.34, cy + KEEPER.h * s / 2, s); setCounter(cy);
+    }
+    relayoutLoose();
+    return;
+  }
+  const stack = W / H < 1.3;
+  if (stack) {
+    const rows = [blocks.filter(b => !b.low), blocks.filter(b => b.low)].filter(r => r.length).map(r => {
+      const w = r.reduce((a, b) => a + b.w, 0) + GAP * (r.length - 1), h = Math.max(...r.map(b => b.h));
+      return { r, w, h, s: Math.min(SMAX, W / w) };
+    });
+    let total = rows.reduce((a, R) => a + R.h * R.s, 0) + GAP * (rows.length - 1);
+    if (total > H) { const f = H / total; rows.forEach(R => R.s *= f); total = H; }
+    const spare = H - total - GAP * 0.5;
+    let ks = Math.min(1.15, spare / KEEPER.h);
+    const showK = ks >= 0.45;
+    let free = spare - (showK ? KEEPER.h * ks : 0);
+    let y = Z.top - free * 0.2;
+    if (showK) {
+      keeperM.g.visible = true;
+      place(keeperM, 0, y - KEEPER.h * ks / 2, ks);
+      y -= KEEPER.h * ks; setCounter(y);
+      y -= GAP * 0.5;
+    } else { keeperM.g.visible = false; place(keeperM, 0, view.h, 0.01); setCounter(Z.top + 0.2); }
+    const g2 = (free * 0.8) / (rows.length + 1);
+    y -= g2;
+    for (const R of rows) {
+      const rh = R.h * R.s;
+      let x = -R.w * R.s / 2;
+      for (const b of R.r) { place(b, x + b.w * R.s / 2, y - rh / 2, R.s); x += (b.w + GAP) * R.s; }
+      y -= rh + GAP + g2;
+    }
+  } else {
+    const rw = blocks.reduce((a, b) => a + b.w, 0) + GAP * (blocks.length - 1), rh = Math.max(...blocks.map(b => b.h));
+    const topLimit = pxToY(64);
+    let ks = 1, s = 1, cy = 0;
+    for (let it = 0; it < 3; it++) {
+      s = Math.min(SMAX_SIDE, (W - KEEPER.w * ks - GAP) / rw, H / rh);
+      cy = (Z.top + Z.bottom) / 2;
+      counterY = cy - 0.5 * s;
+      ks = Math.max(0.4, Math.min(1.2, (topLimit - counterY) / KEEPER.h));
+    }
+    keeperM.g.visible = true;
+    const left = -view.w / 2 + M;
+    place(keeperM, left + KEEPER.w * ks / 2, counterY + KEEPER.h * ks / 2, ks);
+    setCounter(counterY);
+    const regionL = left + KEEPER.w * ks + GAP, regionR = view.w / 2 - M;
+    let x = Math.max(regionL, Math.min(-rw * s / 2, regionR - rw * s));
+    if (x + rw * s > regionR) x = (regionL + regionR - rw * s) / 2;
+    for (const b of blocks) { place(b, x + b.w * s / 2, cy, s); x += (b.w + GAP) * s; }
+  }
+  relayoutLoose();
+}
+
+/* =====================================================================
+   QUESTION BLOCKS
+   ===================================================================== */
+let tappables = [];
+function tappable(meshObj, fn) { meshObj.userData.onTap = fn; tappables.push(meshObj); }
+function untap(meshObj) { tappables = tappables.filter(t => t !== meshObj); }
+
+function mkBlock(role, w, h, opts = {}) {
+  const b = mover(play, { role, w, h, low: !!opts.low, z: 0, top: true });
+  blocks.push(b);
+  return b;
+}
+// flow-layout a list of money, centred on (0,0)
+function flow(keys, maxW, gap = 0.2) {
+  const rows = []; let cur = [], cw = 0;
+  keys.forEach((k, i) => { const { w } = msize(k); if (cur.length && cw + gap + w > maxW) { rows.push(cur); cur = []; cw = 0; } cw += (cur.length ? gap : 0) + w; cur.push(i); });
+  if (cur.length) rows.push(cur);
+  const rowH = r => Math.max(...r.map(i => msize(keys[i]).h));
+  const H = rows.reduce((a, r) => a + rowH(r), 0) + gap * (rows.length - 1);
+  const pos = []; let y = H / 2, W = 0;
+  rows.forEach(r => {
+    const h = rowH(r), rw = r.reduce((a, i) => a + msize(keys[i]).w, 0) + gap * (r.length - 1);
+    W = Math.max(W, rw); let x = -rw / 2;
+    r.forEach(i => { const w = msize(keys[i]).w; pos[i] = { x: x + w / 2, y: y - h / 2 }; x += w + gap; });
+    y -= h + gap;
+  });
+  return { pos, w: W, h: H };
+}
+
+function itemBlock(item, price) {
+  const b = mkBlock('item', 2.3, 2.5);
+  const { wrap } = fitModel(BUILD[item.kind](), 1.75, 1.7);
+  const sway = new THREE.Group(); sway.add(wrap); sway.position.set(-0.05, 0.3, 0.1); b.inner.add(sway);
+  const shadow = mesh(new THREE.CircleGeometry(0.85, 32), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.13, depthWrite: false }), 0, -0.62, -0.6);
+  shadow.scale.y = 0.25; b.inner.add(shadow);
+  const tag = priceTag(price); tag.position.set(0.5, -0.82, 0.7); tag.rotation.z = -0.08; b.inner.add(tag);
+  const hit = mesh(new THREE.PlaneGeometry(2.3, 2.6), hitMat, 0, 0, 0.9); b.inner.add(hit);
+  Object.assign(b, { sway, model: wrap.children[0], item, price, hit, phase: Math.random() * 6 });
+  return b;
+}
+function moneyBlock(keys, { maxW = 5, gap = 0.3, title = null, low = false, role = 'money' } = {}) {
+  const f = flow(keys, maxW, gap), T = title ? 0.62 : 0;
+  const w = Math.max(f.w + 0.7, title ? 2.8 : 0), h = f.h + 0.7 + T;
+  const b = mkBlock(role, w, h, { low });
+  const mat = matMesh(w, h, { fill: '#fff6dc', stroke: '#e9b949' }); mat.position.z = -0.3; b.inner.add(mat);
+  if (title) { const l = label(title, { size: 0.44, bg: '#ffd166' }); l.position.set(0, h / 2 - 0.36, -0.2); b.inner.add(l); }
+  b.coins = keys.map((k, i) => {
+    const c = moneyMover(b.inner, k);
+    c.tp.set(f.pos[i].x, f.pos[i].y - T / 2, 0); c.g.position.copy(c.tp); c.ts = 1;
+    c.sv = 0; c.s = 0.001; c.delay = i * 0.07;
+    return c;
+  });
+  return b;
+}
+function paySpot() {
+  const b = mkBlock('pay', 4.4, 3.0);
+  const mat = matMesh(4.4, 3.0, { fill: '#fffaf0', stroke: '#f4a261', dash: true }); mat.position.z = -0.3; b.inner.add(mat);
+  const l = label('Put money here', { size: 0.42, bg: null, color: '#d17a22' }); l.position.z = -0.25; l.material.opacity = 0.75; b.inner.add(l);
+  b.hintLabel = l;
+  return b;
+}
+function trayBlock(keys) {
+  const coins = keys.filter(k => !MONEY[k].note), notes = keys.filter(k => MONEY[k].note);
+  const CW = 1.42, CH = 1.42, NW = 2.12, NH = 1.25, PAD = 0.3, T = 0.62;
+  const rows = [coins, notes].filter(r => r.length);
+  const isNote = r => MONEY[r[0]].note;
+  const w = Math.max(...rows.map(r => r.length * (isNote(r) ? NW : CW))) + PAD * 2;
+  const h = rows.reduce((a, r) => a + (isNote(r) ? NH : CH), 0) + PAD * 2 + T;
+  const b = mkBlock('tray', w, h, { low: true });
+  const mat = matMesh(w, h, { fill: '#4f8fd8', stroke: '#2f6db5', pattern: 'felt' }); mat.position.z = -0.3; b.inner.add(mat);
+  const l = label('Your money — tap to pay', { size: 0.42, bg: '#ffd166' }); l.position.set(0, h / 2 - 0.38, -0.2); b.inner.add(l);
+  b.stacks = [];
+  let y = h / 2 - PAD - T;
+  for (const r of rows) {
+    const cw = isNote(r) ? NW : CW, ch = isNote(r) ? NH : CH;
+    r.forEach((k, i) => {
+      const st = mover(b.inner, { key: k, value: mval(k) });
+      for (let j = 2; j >= 0; j--) { const v = moneyVisual(k, false); v.position.set(-0.04 * j, -0.07 * j, -0.05 * j); if (MONEY[k].note) v.rotation.z += (j - 1) * 0.06; st.inner.add(v); }
+      st.hit = mesh(new THREE.PlaneGeometry(cw - 0.06, ch - 0.06), hitMat, 0, 0, 0.3); st.inner.add(st.hit);
+      st.tp.set((i - (r.length - 1) / 2) * cw, y - ch / 2, 0); st.g.position.copy(st.tp); st.ts = 1; st.delay = 0.1 + i * 0.06;
+      tappable(st.hit, () => trayTap(st));
+      b.stacks.push(st);
+    });
+    y -= ch;
+  }
+  return b;
+}
+
+/* ---------- loose money (paid coins, change) ---------- */
+const pay = { list: [], spot: null, tray: null, price: 0 };
+let changeCoins = [];
+function blockToWorld(b, x, y) { return new V3(b.tp.x + x * b.ts, b.tp.y + y * b.ts, 0); }
+function relayoutLoose() {
+  const B = pay.spot;
+  if (B) {
+    const list = [...pay.list].sort((a, b) => byValue(a.key, b.key));
+    const iw = B.w - 0.45, ih = B.h - 0.4;
+    for (const k of [1, 0.86, 0.74, 0.64, 0.56, 0.48, 0.42]) {
+      const f = flow(list.map(e => e.key), iw / k, 0.14);
+      if (f.h * k <= ih || k === 0.42) {
+        list.forEach((e, i) => { const p = blockToWorld(B, f.pos[i].x * k, f.pos[i].y * k); e.tp.set(p.x, p.y, 0.35 + i * 0.012); e.ts = B.ts * k; });
+        break;
+      }
+    }
+    B.hintLabel.visible = pay.list.length === 0;
+  }
+  if (changeCoins.length) {
+    const Z = zones(), f = flow(changeCoins.map(c => c.key), view.w * 0.8, 0.2);
+    changeCoins.forEach((c, i) => { c.tp.set(f.pos[i].x * 1.2, Z.bottom + 0.9 + f.pos[i].y, 1.2); c.ts = 1.2; });
+  }
+}
+function stackWorld(st) { const T = pay.tray; return blockToWorld(T, st.tp.x, st.tp.y); }
+function addPaid(key, glow = false) {
+  const st = pay.tray.stacks.find(s => s.key === key);
+  const e = moneyMover(play, key);
+  e.top = true;
+  const p = stackWorld(st); e.g.position.set(p.x, p.y, 0.6); e.s = pay.tray.ts; e.g.scale.setScalar(e.s);
+  pay.list.push(e);
+  tappable(e.hit, () => paidTap(e));
+  e.hit.userData.busy = () => e.g.position.distanceTo(e.tp) > 0.35; // still flying: taps go to what is behind it
+  if (glow) halo(e.inner, MONEY[key].note ? 0.7 : MONEY[key].r, -0.08);
+  st.hop = 1;
+  relayoutLoose(); updateTotal();
+  MONEY[key].note ? sfx.swish() : sfx.clink();
+  return e;
+}
+function returnPaid(e) {
+  pay.list = pay.list.filter(x => x !== e); untap(e.hit);
+  const st = pay.tray.stacks.find(s => s.key === e.key), p = stackWorld(st);
+  e.tp.set(p.x, p.y, 0.6); e.dieIn = 0.18;
+}
+function updateTotal() {
+  const t = sumMoney(pay.list.map(e => e.key));
+  $('total').innerHTML = `<b>₹${t}</b>&nbsp;of ₹${pay.price}`;
+  return t;
+}
+
+/* =====================================================================
+   GAME
+   ===================================================================== */
+const game = { playing: false, levelKey: null, L: null, qi: 0, firstTry: 0, attempts: 0, q: null, busy: false, recent: [], countSum: 0 };
+let nextTimer = null, timers = [];
+const later = (fn, ms) => { const id = setTimeout(fn, ms); timers.push(id); return id; };
+
+function setCard(q) {
+  const card = $('qcard');
+  $('qtext').textContent = q.text;
+  setSub(q.sub || '');
+  card.classList.remove('enter'); void card.offsetWidth; card.classList.add('enter');
+}
+function setSub(text, hint = false) { const s = $('qsub'); s.textContent = text; s.classList.toggle('hinting', hint); }
+function updateHud(bump) {
+  $('starCount').textContent = game.firstTry;
+  $('qnum').textContent = `${Math.min(game.qi + 1, QUESTIONS_PER_ROUND)} / ${QUESTIONS_PER_ROUND}`;
+  if (bump) { const s = $('starCount'); s.classList.remove('bump'); void s.offsetWidth; s.classList.add('bump'); }
+}
+function toast(text, kind = '') {
+  const t = $('toast');
+  t.textContent = text; t.className = kind; void t.offsetWidth; t.className = `${kind} show`;
+}
+function showChips(opts) {
+  const box = $('answers'); box.innerHTML = '';
+  if (!opts) { box.classList.add('hidden'); return; }
+  for (const o of opts) {
+    const b = document.createElement('button');
+    b.className = 'ans'; b.textContent = o.label; b.dataset.v = String(o.v);
+    b.onclick = () => chipTap(b, o.v);
+    box.appendChild(b);
+  }
+  box.classList.remove('hidden');
+}
+
+function clearQuestion() {
+  clearTimeout(nextTimer); timers.forEach(clearTimeout); timers = [];
+  for (const m of movers) if (m.top) m.dying = true;
+  tappables = []; blocks = []; changeCoins = [];
+  Object.assign(pay, { list: [], spot: null, tray: null, price: 0 });
+  showChips(null);
+  $('paybar').classList.add('hidden'); $('payBtn').classList.remove('pulse');
+}
+
+function startGame(key) {
+  audio();
+  clearDeco();
+  Object.assign(game, { playing: true, levelKey: key, L: LEVELS[key], qi: 0, firstTry: 0, recent: [] });
+  $('startScreen').classList.add('hidden'); $('endScreen').classList.add('hidden');
+  ['qcard', 'stats', 'homeBtn'].forEach(id => $(id).classList.remove('hidden'));
+  nextQuestion();
+}
+
+function nextQuestion() {
+  clearQuestion();
+  if (game.qi >= QUESTIONS_PER_ROUND) return endGame();
+  const q = makeQuestion(game.L, game.recent);
+  game.recent.push(q.text + q.sub); if (game.recent.length > 4) game.recent.shift();
+  Object.assign(game, { q, attempts: 0, busy: false, countSum: 0 });
+  setCard(q); updateHud();
+  buildQuestion(q);
+  arrange();
+  // new blocks start where they are, popping in
+  for (const b of blocks) { b.g.position.copy(b.tp); }
+  say(q.say);
+}
+
+function buildQuestion(q) {
+  switch (q.type) {
+    case 'coin': {
+      const b = moneyBlock(q.set, { maxW: 6, gap: 0.5 });
+      b.coins.forEach(c => tappable(c.hit, () => coinTap(c)));
+      break;
+    }
+    case 'count': {
+      const b = moneyBlock(q.money, { maxW: 4.6, gap: 0.42 });
+      b.coins.forEach(c => tappable(c.hit, () => countTap(c)));
+      showChips(q.options.map(v => ({ label: `₹${v}`, v })));
+      break;
+    }
+    case 'pay': {
+      const A = itemBlock(q.item, q.price);
+      pay.spot = paySpot(); pay.tray = trayBlock(game.L.tray || ['c1', 'c2', 'c5', 'c10']); pay.price = q.price;
+      A.g.visible = true; updateTotal();
+      $('paybar').classList.remove('hidden');
+      break;
+    }
+    case 'more': {
+      q.items.forEach(([item, price], i) => { const b = itemBlock(item, price); tappable(b.hit, () => itemTap(b, i)); });
+      break;
+    }
+    case 'canBuy': {
+      itemBlock(q.item, q.price);
+      moneyBlock(q.money, { maxW: 4.2, gap: 0.25, title: 'Your money', low: true, role: 'purse' });
+      showChips(q.options);
+      break;
+    }
+    case 'change': {
+      itemBlock(q.item, q.price);
+      moneyBlock(q.paidMoney, { maxW: 4, title: 'You pay', role: 'paid' });
+      showChips(q.options.map(v => ({ label: `₹${v}`, v })));
+      break;
+    }
+    default: showChips(q.options.map(v => ({ label: String(v), v })));
+  }
+}
+
+function win(msg, sayExtra = '', delay = 1600) {
+  game.busy = true;
+  if (game.attempts === 0) game.firstTry++;
+  game.qi++;
+  updateHud(game.attempts === 0);
+  keeperMood('happy');
+  const praise = game.attempts === 0 ? pick(PRAISE) : 'Good! You did it!';
+  toast(msg || praise); say((msg || praise) + ' ' + sayExtra);
+  nextTimer = setTimeout(nextQuestion, delay);
+}
+function sparkle(pos, n = 30) { burst(pos, n); }
+
+/* ---------- coin recognition ---------- */
+function coinTap(c) {
+  if (game.busy) return;
+  const q = game.q;
+  if (c.key === q.key) {
+    untap(c.hit); c.spin = 12; c.ts = 1.4; c.hop = 1;
+    sfx.clink(); sfx.correct(); sparkle(c.g.getWorldPosition(new V3()));
+    blocks[0].coins.forEach(o => { if (o !== c) o.ts = 0.7; });
+    win(null, `That's the ${moneyName(q.key)}!`);
+  } else {
+    game.attempts++;
+    c.shake = 1; c.ts = 0.75; untap(c.hit);
+    sfx.wrong(); keeperMood('hmm');
+    const left = blocks[0].coins.filter(o => tappables.includes(o.hit)).length;
+    if (game.attempts === 1 && left > 1) { toast('Oops! Try again 🙂', 'soft'); say(`Oops! That one is ${rs(c.value)}. Try again!`); }
+    else showCoinHint();
+  }
+}
+function showCoinHint() {
+  const q = game.q, right = blocks[0].coins.find(o => o.key === q.key);
+  halo(right.inner, MONEY[q.key].note ? 0.7 : MONEY[q.key].r);
+  setSub(`This is the ₹${mval(q.key)} ${MONEY[q.key].note ? 'note' : 'coin'} — tap it!`, true);
+  say(`Look! This is the ${moneyName(q.key)}. Tap it!`);
+}
+
+/* ---------- count the money ---------- */
+function countTap(c, auto = false) {
+  if (game.busy && !auto) return;
+  c.hop = 1;
+  if (c.counted) { sfx.tick(0); return; }
+  c.counted = true; game.countSum += c.value;
+  const l = label(`₹${game.countSum}`, { size: 0.46, bg: '#ffd166', border: '#e09f3e' });
+  l.position.set(0, (MONEY[c.key].note ? 0.45 : MONEY[c.key].r) + 0.22, 0.4); c.inner.add(l);
+  sfx.tick(blocks[0].coins.filter(o => o.counted).length);
+  if (!auto) say(String(game.countSum));
+}
+function autoCount(done) {
+  const coins = blocks[0].coins.filter(c => !c.counted);
+  coins.forEach((c, i) => later(() => countTap(c, true), 200 + i * 450));
+  later(done, 300 + coins.length * 450);
+}
+
+/* ---------- answer chips (count, can I buy, change) ---------- */
+function chipTap(btn, v) {
+  if (game.busy || btn.disabled) return;
+  const q = game.q;
+  if (String(v) === String(q.a)) {
+    btn.classList.remove('hint'); btn.classList.add('right');
+    sfx.correct();
+    if (q.type === 'count') { blocks[0].coins.forEach(c => c.hop = 1); win(null, `It's ${rs(q.a)}.`); }
+    else if (q.type === 'canBuy') {
+      if (q.a === 'yes') {
+        sfx.chaching();
+        const item = blocks.find(b => b.role === 'item'), purse = blocks.find(b => b.role === 'purse');
+        slideToChild(item);
+        purse.coins.forEach((c, i) => { c.tp.set(c.tp.x + 3, c.tp.y + 6, 0); c.ts = 0.3; c.delay = i * 0.06; });
+      }
+      win(null, q.doneSay, 2000);
+    } else if (q.type === 'change') {
+      sfx.chaching();
+      const hand = keeperHand();
+      changeCoins = q.change.map((k, i) => { const c = moneyMover(play, k); c.top = true; c.g.position.copy(hand); c.s = 0.3; c.delay = 0.15 + i * 0.12; return c; });
+      relayoutLoose();
+      win(null, q.doneSay, 2600);
+    } else win(null, '');
+  } else {
+    game.attempts++;
+    btn.classList.add('wrong'); btn.disabled = true;
+    sfx.wrong(); keeperMood('hmm');
+    const left = [...$('answers').children].filter(b => !b.disabled).length;
+    if (game.attempts === 1 && left > 1) {
+      toast('Oops! Try again 🙂', 'soft');
+      say(q.type === 'count' ? 'Oops! Try again. Tap the coins to count them.' : 'Oops! Try again.');
+    } else showChipHint();
+  }
+}
+function showChipHint() {
+  const q = game.q;
+  const right = [...$('answers').children].find(b => b.dataset.v === String(q.a));
+  const mark = () => { right?.classList.add('hint'); };
+  if (q.type === 'count') {
+    game.busy = true;
+    setSub("Let's count together!", true); say("Let's count together!");
+    autoCount(() => { game.busy = false; mark(); setSub(`It's ₹${q.a} — tap ₹${q.a}!`, true); say(`It's ${rs(q.a)}. Tap ${q.a}!`); });
+  } else {
+    mark(); setSub(q.hintText || `The answer is ${q.a}`, true); say(q.hintSay || `The answer is ${q.a}.`);
+  }
+}
+
+/* ---------- which costs more ---------- */
+function itemTap(b, i) {
+  if (game.busy) return;
+  const q = game.q;
+  if (i === q.a) {
+    b.hop = 1; b.ts *= 1.12; sfx.correct(); sparkle(b.g.getWorldPosition(new V3()));
+    blocks.forEach(o => { if (o !== b) o.ts *= 0.8; });
+    win(null, q.doneSay);
+  } else {
+    game.attempts++;
+    b.shake = 1; sfx.wrong(); keeperMood('hmm');
+    const right = blocks[q.a];
+    if (!right.haloed) { halo(right.inner, 0.95, -0.6).position.y = 0.3; right.haloed = true; }
+    setSub(q.hintText, true); say(q.hintSay);
+  }
+}
+
+/* ---------- pay exactly ---------- */
+function trayTap(st) {
+  if (game.busy) return;
+  if (pay.list.length >= 24) { toast('Counter is full!', 'soft'); say('The counter is full! Tap a coin on the counter to take it back.'); return; }
+  $('payBtn').classList.remove('pulse');
+  addPaid(st.key);
+  say(rs(updateTotal()));
+}
+function paidTap(e) {
+  if (game.busy) return;
+  returnPaid(e); relayoutLoose();
+  say(rs(updateTotal())); sfx.clinkBack();
+}
+function payPress() {
+  if (game.busy || game.q?.type !== 'pay') return;
+  const price = pay.price, total = updateTotal();
+  if (total === 0) { toast('Tap the coins! 👇', 'soft'); say('First tap your coins to put money on the counter.'); return; }
+  if (total === price) return paySuccess();
+  game.attempts++;
+  sfx.wrong(); keeperMood('hmm');
+  if (game.attempts === 1) {
+    const d = Math.abs(total - price);
+    const msg = total > price ? `That's ₹${total} — too much! Take ₹${d} back.` : `That's ₹${total} — not enough. Add ₹${d} more.`;
+    toast('Oops! Try again 🙂', 'soft'); setSub(msg, true); say(msg);
+  } else showPayHint();
+}
+function showPayHint() {
+  game.busy = true;
+  [...pay.list].forEach(returnPaid); relayoutLoose(); updateTotal();
+  const set = greedy(pay.price, pay.tray.stacks.map(s => s.key));
+  set.forEach((k, i) => later(() => { addPaid(k, true); }, 450 + i * 300));
+  const parts = set.map(k => `₹${mval(k)}`);
+  setSub(`${parts.join(' + ')} = ₹${pay.price} · Now press Pay!`, true);
+  say(`Look! ${listSay(set.map(k => rs(mval(k))))} make ${rs(pay.price)}. Now press Pay!`);
+  later(() => { game.busy = false; $('payBtn').classList.add('pulse'); }, 500 + set.length * 300);
+}
+function paySuccess() {
+  game.busy = true;
+  $('payBtn').classList.remove('pulse');
+  sfx.chaching();
+  const hand = keeperHand();
+  pay.list.forEach((e, i) => { untap(e.hit); e.tp.copy(hand); e.ts *= 0.35; e.dieIn = 0.45 + i * 0.03; e.speed = 7; });
+  sparkle(blockToWorld(pay.spot, 0, 0), 36);
+  const item = blocks.find(b => b.role === 'item');
+  slideToChild(item);
+  const fewest = game.L.fewestBonus && pay.list.length === greedy(pay.price, pay.tray.stacks.map(s => s.key)).length;
+  const name = game.q.item.name;
+  if (fewest) { setSub('🌟 Fewest coins — super smart!', true); win(`Fewest coins! 🌟`, `You used the fewest coins! The ${name} is yours!`, 2300); }
+  else win(null, `The ${name} is yours!`, 2200);
+  pay.list = [];
+}
+function slideToChild(b) {
+  if (!b) return;
+  const Z = zones();
+  b.tp.set(0, Z.bottom + 1.3, 2.5); b.ts *= 1.15; b.speed = 4; b.dieIn = 1.5;
+}
+
+function endGame() {
+  game.playing = false;
+  clearQuestion();
+  ['qcard', 'stats'].forEach(id => $(id).classList.add('hidden'));
+  const s = game.firstTry, N = QUESTIONS_PER_ROUND;
+  const stars = s >= Math.ceil(N * 0.9) ? 3 : s >= Math.ceil(N * 0.6) ? 2 : 1;
+  $('bigstars').innerHTML = [0, 1, 2].map(i => `<span class="${i < stars ? '' : 'dim'}">⭐</span>`).join('');
+  $('endmsg').textContent = `${s} out of ${N} right on the first try!`;
+  const key = `mm-best-${game.levelKey}`, best = Number(store.get(key) || 0);
+  $('newbest').classList.toggle('hidden', !(s > best));
+  if (s > best) store.set(key, String(s));
+  $('endScreen').classList.remove('hidden');
+  arrange(); keeperMood('happy'); keeper.moodT = 3;
+  sfx.fanfare();
+  say(`You got ${s} out of ${N}! ${stars === 3 ? 'Amazing shopping!' : stars === 2 ? 'Great shopping!' : 'Good try! Let\'s shop again!'}`);
+  for (let i = 0; i < 4; i++) setTimeout(() => burst(new V3((Math.random() - 0.5) * view.w * 0.7, (Math.random() - 0.2) * view.h * 0.4, 0.5), 40), i * 250);
+}
+
+function goHome() {
+  game.playing = false; clearQuestion();
+  if (hasSpeech) speechSynthesis.cancel();
+  ['qcard', 'stats', 'homeBtn'].forEach(id => $(id).classList.add('hidden'));
+  $('endScreen').classList.add('hidden');
+  buildLevelButtons();
+  $('startScreen').classList.remove('hidden');
+  arrange();
+}
+
+function buildLevelButtons() {
+  const box = $('levels'); box.innerHTML = '';
+  for (const [key, L] of Object.entries(LEVELS)) {
+    const best = Number(store.get(`mm-best-${key}`) || 0);
+    const st = best >= Math.ceil(QUESTIONS_PER_ROUND * 0.9) ? 3 : best >= Math.ceil(QUESTIONS_PER_ROUND * 0.6) ? 2 : best > 0 ? 1 : 0;
+    const btn = document.createElement('button');
+    btn.className = 'lvl'; btn.style.background = L.color;
+    btn.innerHTML = `<span><b>${L.emoji} ${L.name}</b><small>${L.blurb}</small></span>
+      <span class="best">${[0, 1, 2].map(i => `<span class="${i < st ? '' : 'dim'}">⭐</span>`).join('')}</span>`;
+    btn.onclick = () => startGame(key);
+    box.appendChild(btn);
+  }
+}
+
+$('homeBtn').onclick = goHome;
+$('againBtn').onclick = () => startGame(game.levelKey);
+$('levelBtn').onclick = goHome;
+$('qcard').onclick = () => game.q && game.playing && say(game.q.say);
+$('payBtn').onclick = payPress;
+
+/* ---------- tap / click ---------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+renderer.domElement.addEventListener('pointerdown', e => {
+  audio();
+  if (!game.playing) return;
+  ndc.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObjects(tappables, false).find(h => !h.object.userData.busy?.());
+  if (hit) hit.object.userData.onTap();
+});
+
+/* ---------- sparkles & confetti ---------- */
+const confGeo = new THREE.PlaneGeometry(0.14, 0.24), starGeo = new THREE.OctahedronGeometry(0.1);
+const CONF = [0xff4d6d, 0xffb703, 0x4cc9f0, 0x8ac926, 0xb5179e, 0xfb8500, 0x3a86ff];
+const particles = [];
+function burst(pos, n) {
+  for (let i = 0; i < n; i++) {
+    const gold = i % 3 === 0;
+    const m = new THREE.Mesh(gold ? starGeo : confGeo, new THREE.MeshBasicMaterial({ color: gold ? 0xffd60a : pick(CONF), side: THREE.DoubleSide, transparent: true }));
+    m.position.copy(pos); m.position.z += 1;
+    const a = Math.random() * Math.PI * 2, s = 2.5 + Math.random() * 4;
+    particles.push({ m, life: 1.4, max: 1.4, v: new V3(Math.cos(a) * s, Math.sin(a) * s + 3, (Math.random() - 0.5) * 2),
+      spin: new V3(Math.random() * 9, Math.random() * 9, Math.random() * 9) });
+    scene.add(m);
+  }
+}
+
+/* ---------- falling coins on the menu ---------- */
+let deco = [], decoTimer = 0;
+function clearDeco() { deco.forEach(d => scene.remove(d.g)); deco = []; }
+
+/* =====================================================================
+   ANIMATION LOOP
+   ===================================================================== */
+const clock = new THREE.Clock();
+function inScene(o) { while (o.parent) o = o.parent; return o === scene; }
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+
+  // menu: coins rain gently
+  if (!game.playing) {
+    decoTimer -= dt;
+    if (decoTimer <= 0 && deco.length < 12) {
+      decoTimer = 0.55;
+      const g = moneyVisual(pick(['c1', 'c2', 'c5', 'c10', 'c10', 'n20']), false), s = 0.8 + Math.random() * 0.6;
+      g.scale.setScalar(s); g.position.set((Math.random() - 0.5) * view.w * 0.95, view.h / 2 + 1, -0.5 + Math.random());
+      scene.add(g); deco.push({ g, vy: 1.1 + Math.random() * 1.1, spin: 1.5 + Math.random() * 2.5 });
+    }
+  }
+  for (let i = deco.length - 1; i >= 0; i--) {
+    const d = deco[i]; d.g.position.y -= d.vy * dt; d.g.rotation.y += d.spin * dt;
+    if (d.g.position.y < -view.h / 2 - 1.5) { scene.remove(d.g); deco.splice(i, 1); }
+  }
+
+  // everything that moves
+  let anyDead = false;
+  for (const m of movers) {
+    if (m.dead) { anyDead = true; continue; }
+    if (m.delay > 0) { m.delay -= dt; m.g.scale.setScalar(0.0001); continue; }
+    if (m.dieIn > 0) { m.dieIn -= dt; if (m.dieIn <= 0) m.dying = true; }
+    const k = 1 - Math.exp(-dt * m.speed);
+    m.g.position.lerp(m.tp, k);
+    const target = m.dying ? 0 : m.ts;
+    m.sv += (target - m.s) * 190 * dt; m.sv *= Math.exp(-dt * 15); m.s += m.sv * dt;
+    if (m.dying && m.s < 0.03) {
+      m.dead = true; anyDead = true;
+      m.g.parent?.remove(m.g);
+      m.g.traverse(o => { if (o.userData.mover) o.userData.mover.dead = true; });
+      disposeTree(m.g);
+      continue;
+    }
+    m.g.scale.setScalar(Math.max(0.0001, m.s));
+    m.hop = Math.max(0, m.hop - dt * 3); m.shake = Math.max(0, m.shake - dt * 1.8);
+    m.inner.position.set(Math.sin(t * 40) * 0.12 * m.shake, Math.sin(m.hop * Math.PI) * 0.35, 0);
+    if (m.spin) m.inner.rotation.y += m.spin * dt;
+    if (m.tilt) m.tilt.rotation.y = 0.14 + Math.sin(t * 1.4 + m.phase) * 0.12;
+    if (m.sway) { m.sway.rotation.y = Math.sin(t * 1.2 + m.phase) * 0.25; m.sway.position.y = 0.3 + Math.sin(t * 2 + m.phase) * 0.04;
+      const sp = m.model?.userData?.spinner; if (sp) sp.rotation.y += dt * 0.8; }
+  }
+  if (anyDead) movers = movers.filter(m => !m.dead);
+
+  // hint halos pulse
+  for (let i = halos.length - 1; i >= 0; i--) {
+    const h = halos[i];
+    if (!inScene(h)) { halos.splice(i, 1); continue; }
+    const k = 0.5 + 0.5 * Math.sin(t * 7);
+    h.scale.setScalar(1 + 0.12 * k); h.material.opacity = 0.45 + 0.5 * k;
+  }
+
+  // shopkeeper
+  const K = keeper;
+  K.moodT = Math.max(0, K.moodT - dt);
+  const happy = K.mood === 'happy' && K.moodT > 0, hmm = K.mood === 'hmm' && K.moodT > 0;
+  K.body.position.y = Math.sin(t * 2) * 0.04 + (happy ? Math.abs(Math.sin(t * 9)) * 0.22 : 0);
+  K.head.rotation.z = Math.sin(t * 1.3) * 0.05 + (hmm ? 0.22 : 0);
+  K.head.rotation.x = hmm ? 0.12 : 0;
+  K.blink -= dt; const closed = K.blink < 0.12; if (K.blink < 0) K.blink = 2 + Math.random() * 3;
+  K.eyes.forEach(e => e.scale.y = closed ? 0.12 : 1);
+  const R = K.arms[1], Lr = K.arms[0];
+  const wave = happy || !game.playing;
+  R.rotation.x += ((wave ? 0 : -0.9) - R.rotation.x) * Math.min(1, dt * 8);
+  R.rotation.z += ((wave ? 2.5 + Math.sin(t * 12) * 0.35 : 0.18) - R.rotation.z) * Math.min(1, dt * 8);
+  Lr.rotation.z += ((happy ? -2.3 + Math.sin(t * 12 + 1) * 0.3 : -0.18) - Lr.rotation.z) * Math.min(1, dt * 8);
+  Lr.rotation.x += ((happy ? 0 : -0.9) - Lr.rotation.x) * Math.min(1, dt * 8);
+
+  // particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= dt;
+    if (p.life <= 0) { scene.remove(p.m); p.m.material.dispose(); particles.splice(i, 1); continue; }
+    p.v.y -= 9 * dt; p.m.position.addScaledVector(p.v, dt);
+    p.m.rotation.x += p.spin.x * dt; p.m.rotation.y += p.spin.y * dt; p.m.rotation.z += p.spin.z * dt;
+    p.m.material.opacity = Math.min(1, (p.life / p.max) * 2);
+  }
+
+  renderer.render(scene, camera);
+});
+
+window.addEventListener('resize', layout);
+document.addEventListener('visibilitychange', () => { if (document.hidden && hasSpeech) speechSynthesis.cancel(); });
+buildLevelButtons();
+layout();
+
+// for testing only
+const scr = o => { const v = o.getWorldPosition(new V3()).project(camera); return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight }; };
+window.__test = {
+  game, camera, scene, play, pay,
+  state() {
+    const q = game.q || {};
+    return { playing: game.playing, type: q.type, a: q.a, key: q.key, price: q.price, total: pay.list.length ? sumMoney(pay.list.map(e => e.key)) : 0,
+      qi: game.qi, firstTry: game.firstTry, attempts: game.attempts, busy: game.busy, sub: $('qsub').textContent, text: q.text,
+      playChildren: play.children.length, movers: movers.length, tappables: tappables.length };
+  },
+  targets() {
+    const out = { tray: [], paid: [], coins: [], items: [], chips: [], pay: null };
+    if (pay.tray) pay.tray.stacks.forEach(s => out.tray.push({ key: s.key, value: s.value, ...scr(s.hit) }));
+    pay.list.forEach(e => out.paid.push({ key: e.key, value: e.value, ...scr(e.hit) }));
+    blocks.forEach((b, i) => {
+      if (b.coins && (game.q.type === 'coin' || game.q.type === 'count')) b.coins.forEach(c => out.coins.push({ key: c.key, value: c.value, ...scr(c.hit) }));
+      if (b.role === 'item') out.items.push({ index: i, price: b.price, ...scr(b.hit) });
+    });
+    [...$('answers').children].forEach(b => { const r = b.getBoundingClientRect(); out.chips.push({ v: b.dataset.v, disabled: b.disabled, x: r.x + r.width / 2, y: r.y + r.height / 2 }); });
+    if (!$('paybar').classList.contains('hidden')) { const r = $('payBtn').getBoundingClientRect(); out.pay = { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }
+    return out;
+  },
+  greedy,
+};
+</script>
+</body>
+</html>

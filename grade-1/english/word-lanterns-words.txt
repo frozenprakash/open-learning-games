@@ -1,0 +1,21 @@
+// Words for Word Lanterns (grade-1/english/word-lanterns.html).
+// "# name" starts a list. Words are separated by commas. Repeats are dropped.
+// After editing, run tools/make-word-lanterns.ps1 to rebuild the game.
+// Common Grade 1 sight words. Word endings (ed, tion, ing) are left out: they are not read alone.
+
+# Set 1: longer words
+Before, Little, Always, Where, Around, People, Friend, Inside, Under, Every, About,
+First, Write, Other, Think, Please, Should, Behind, Again, Listen, Answer
+
+# Set 1: short words
+is, am, in, on, of, Do, Go, We, It, By, me, as, an, If, So, Or, To, No,
+My, Be, He, Us, Does, At, Are, Up
+
+# Set 2: longer words
+Called, would, Could, Words, Sound, Found, Asked, Place, Thing, Later, Heard,
+Still, until, Night, Light, Large, Close, Point, Count, Match, Equal, Share,
+Order, Sentence, Difficult
+
+# Set 2: easy words
+See, Enjoy, Happy, Big, Green, Say, Boy, New, Day, Run, Long, Come, Easy,
+Ok, Ox, Oh, ah, Pen, Sun, Bat, ma, Box, mat, Toy, Sit, Eat

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Open Learning Games</title>
+<meta name="description" content="Free 3D learning games for kids. Maths and English for Grade 1, made with three.js. Play in the browser on a phone or computer.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎈</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#fff8ec;--card:#ffffff;--ink:#2b2140;--muted:#6b6380;--line:#eadfcb;--accent:#ff7a2b;--accent2:#5b6cff;--soon:#f1ebe0}
+  @media (prefers-color-scheme:dark){:root{--bg:#141a33;--card:#1e2647;--ink:#f6f1ff;--muted:#a9b0d0;--line:#2f3a66;--accent:#ff9a4d;--accent2:#8f9bff;--soon:#19203d}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Nunito,system-ui,sans-serif;line-height:1.5}
+  .wrap{max-width:900px;margin:0 auto;padding:28px 16px 40px}
+  h1,h2,.grade b{font-family:"Baloo 2",system-ui,sans-serif;line-height:1.1}
+  header{text-align:center;padding:10px 0 18px}
+  header .logo{font-size:56px;line-height:1}
+  h1{font-size:clamp(34px,7vw,52px);margin:6px 0 6px}
+  header p{color:var(--muted);font-size:18px;margin:0 auto;max-width:560px}
+  .grades{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:26px}
+  .grade{display:block;text-decoration:none;color:inherit;background:var(--card);border:2px solid var(--line);border-radius:22px;padding:20px;transition:transform .15s,border-color .15s}
+  .grade b{display:block;font-size:30px}
+  .grade span{color:var(--muted);font-weight:600}
+  a.grade:hover,a.grade:focus-visible{transform:translateY(-3px);border-color:var(--accent)}
+  a.grade.live{border-color:var(--accent);box-shadow:0 6px 0 var(--accent)}
+  a.grade.live b{color:var(--accent)}
+  .grade.soon{background:var(--soon);border-style:dashed}
+  .about{margin-top:34px;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+  .about div{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px}
+  .about h2{font-size:20px;margin:0 0 4px}
+  .about p{margin:0;color:var(--muted)}
+  footer{margin-top:30px;text-align:center;color:var(--muted);font-size:15px}
+  footer a{color:var(--accent2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">🎈🚀🏮</div>
+    <h1>Open Learning Games</h1>
+    <p>Free 3D learning games for kids. Tap a grade to start. Works on phones and computers, no sign-up.</p>
+  </header>
+
+  <section class="grades" aria-label="Grades">
+    <a class="grade live" href="grade-1/"><b>Grade 1</b><span>7 games · Maths and English</span></a>
+    <a class="grade soon" href="https://github.com/frozenprakash/open-learning-games/blob/main/CONTRIBUTING.md"><b>Grade 2</b><span>Coming soon. Help build it!</span></a>
+    <a class="grade soon" href="https://github.com/frozenprakash/open-learning-games/blob/main/CONTRIBUTING.md"><b>Grade 3</b><span>Coming soon. Help build it!</span></a>
+  </section>
+
+  <section class="about">
+    <div><h2>📱 Phone or computer</h2><p>Every game is one web page. Open the link in Chrome, or add it to your home screen.</p></div>
+    <div><h2>🔊 Read aloud</h2><p>Questions are spoken, mistakes get a kind hint, and right answers earn stars.</p></div>
+    <div><h2>🔒 No ads, no tracking</h2><p>Progress stays on your device. No accounts and nothing collected.</p></div>
+  </section>
+
+  <footer>Open source (MIT) · made with three.js · <a href="https://github.com/frozenprakash/open-learning-games">Add a game on GitHub</a></footer>
+</div>
+</body>
+</html>

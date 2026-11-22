@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#2b2470">
+<title>Number Blaster</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
+<!--
+  🚀 NUMBER BLASTER — Grade 1 maths game
+  Space rocks float by carrying numbers. Tap the rock with the right answer and the rocket blasts it!
+  Works with mouse (computer) and touch (phone/tablet).
+  To change the questions, scroll to "EASY-TO-EDIT SETTINGS" in the script below.
+-->
+<style>
+  :root {
+    --ink: #1d3557;
+    --card: rgba(255, 255, 255, 0.94);
+    --pink: #ff4d6d;
+    --space: #2b2470;
+    --good: #2a9d8f;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--space);
+    font-family: "Baloo 2", "Comic Sans MS", "Chalkboard SE", system-ui, sans-serif; color: var(--ink); }
+  canvas { display: block; touch-action: none; }
+
+  #topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 5; pointer-events: none;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: calc(8px + env(safe-area-inset-top)) 12px 0; }
+  .chip { pointer-events: auto; background: var(--card); color: var(--ink); border: 0; border-radius: 999px;
+    min-height: 44px; min-width: 44px; padding: 4px 14px; font: inherit; font-size: 20px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 3px 0 rgba(0,0,0,.25); }
+  button.chip { cursor: pointer; touch-action: manipulation; }
+  #stats { gap: 14px; pointer-events: none; } /* not a button: taps pass through to the rocks */
+  #starCount.bump { animation: bump .5s; display: inline-block; }
+  @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.7); } 100% { transform: scale(1); } }
+
+  #qcard { position: fixed; z-index: 5; left: 50%; transform: translateX(-50%);
+    top: calc(62px + env(safe-area-inset-top)); width: min(92vw, 640px);
+    background: var(--card); border-radius: 22px; padding: 6px 16px 8px; text-align: center; cursor: pointer;
+    box-shadow: 0 5px 0 rgba(0,0,0,.25); }
+  #qcard.enter { animation: cardIn .35s ease-out; }
+  @keyframes cardIn { from { transform: translateX(-50%) scale(.85); opacity: .3; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+  #qtext { font-size: clamp(30px, 8vw, 50px); font-weight: 800; line-height: 1.15; }
+  #qsub { font-size: clamp(16px, 4.2vw, 22px); font-weight: 600; opacity: .8; min-height: 1.3em; line-height: 1.3; }
+
+  #toast { position: fixed; z-index: 6; left: 50%; top: 46%; transform: translate(-50%, -50%) scale(0);
+    font-size: clamp(36px, 10vw, 64px); font-weight: 800; color: #fff; white-space: nowrap; pointer-events: none;
+    text-shadow: 0 4px 0 var(--good), 0 8px 16px rgba(0,0,0,.35); }
+  #toast.soft { text-shadow: 0 4px 0 #e76f51, 0 8px 16px rgba(0,0,0,.35); }
+  #toast.show { animation: toastIn 1.2s ease-out forwards; }
+  @keyframes toastIn {
+    0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+    20% { transform: translate(-50%, -50%) scale(1.15); }
+    35% { transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; }
+    100% { transform: translate(-50%, -60%) scale(1); opacity: 0; }
+  }
+
+  .overlay { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 14px; padding: 24px 16px; text-align: center;
+    background: rgba(24, 18, 70, .38); }
+  .overlay h1 { margin: 0; font-size: clamp(42px, 12vw, 80px); line-height: 1; color: #fff;
+    text-shadow: 0 5px 0 var(--pink), 0 8px 18px rgba(0,0,0,.35); }
+  .overlay .say { margin: 0; font-size: clamp(18px, 4.8vw, 24px); font-weight: 600;
+    background: var(--card); padding: 6px 18px; border-radius: 16px; }
+  .levels { display: flex; flex-direction: column; gap: 12px; width: min(88vw, 380px); margin-top: 6px; }
+  .lvl { font: inherit; border: 0; border-radius: 22px; padding: 10px 18px; color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left;
+    box-shadow: 0 6px 0 rgba(0,0,0,.3); touch-action: manipulation; text-shadow: 0 2px 0 rgba(0,0,0,.18); }
+  .lvl:active, .big:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.3); }
+  .lvl b { font-size: 28px; display: block; line-height: 1.1; }
+  .lvl small { font-size: 15px; font-weight: 600; }
+  .lvl .best { font-size: 20px; white-space: nowrap; }
+  .dim { filter: grayscale(1); opacity: .35; }
+  .big { font: inherit; font-size: 26px; font-weight: 800; border: 0; border-radius: 20px; padding: 10px 28px;
+    color: #fff; background: var(--pink); cursor: pointer; box-shadow: 0 6px 0 rgba(0,0,0,.3); touch-action: manipulation; }
+  .big.alt { background: #fff; color: var(--ink); }
+  #bigstars { font-size: clamp(60px, 17vw, 104px); letter-spacing: 6px; line-height: 1.1; }
+  #newbest { color: #fff; font-weight: 800; font-size: 24px; text-shadow: 0 3px 0 var(--good); }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .hidden { display: none !important; }
+  @media (max-height: 500px) { /* phone turned sideways */
+    #qcard { top: calc(6px + env(safe-area-inset-top)); width: min(56vw, 520px); padding: 2px 12px 4px; }
+    #stats { position: fixed; left: 12px; top: calc(60px + env(safe-area-inset-top)); flex-direction: column; gap: 0; padding: 4px 12px; border-radius: 18px; }
+    #qtext { font-size: 30px; }
+    #qsub { font-size: 16px; }
+    .overlay { gap: 8px; padding: 10px; }
+    .overlay h1 { font-size: 40px; }
+    .overlay h1 br { display: none; }
+    .levels { flex-direction: row; width: min(96vw, 760px); }
+    .lvl { flex: 1; flex-direction: column; align-items: flex-start; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+} }
+</script>
+</head>
+<body>
+
+<div id="topbar">
+  <button class="chip hidden" id="homeBtn" aria-label="Home">🏠</button>
+  <div class="chip hidden" id="stats"><span>⭐ <span id="starCount">0</span></span><span id="qnum">1 / 10</span></div>
+  <button class="chip" id="muteBtn" aria-label="Sound on or off">🔊</button>
+</div>
+
+<div id="qcard" class="hidden" title="Tap to hear the question again">
+  <div id="qtext"></div>
+  <div id="qsub"></div>
+</div>
+
+<div id="toast"></div>
+
+<div class="overlay" id="startScreen">
+  <h1>🚀 Number <br>Blaster</h1>
+  <p class="say">Tap the space rock with the right answer!</p>
+  <div class="levels" id="levels"></div>
+</div>
+
+<div class="overlay hidden" id="endScreen">
+  <h1>You did it!</h1>
+  <div id="bigstars"></div>
+  <p class="say" id="endmsg"></p>
+  <div id="newbest" class="hidden">🏆 New best score!</div>
+  <div class="row">
+    <button class="big" id="againBtn">Play again</button>
+    <button class="big alt" id="levelBtn">Change level</button>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* =====================================================================
+   EASY-TO-EDIT SETTINGS
+   ===================================================================== */
+const QUESTIONS_PER_ROUND = 10;
+
+// Your own questions (e.g. this week's homework). If this list has ANY
+// question in it, the game uses ONLY these questions.
+//   q   = what is written on screen
+//   a   = the right answer (a number)
+//   say = what the voice reads out (optional)
+const MY_QUESTIONS = [
+  // { q: '5 + 3 = ?', say: 'What is 5 plus 3?', a: 8 },
+  // { q: '9 − 4 = ?', say: 'What is 9 minus 4?', a: 5 },
+  // { q: '6 + ? = 10', say: '6 plus what makes 10?', a: 4 },
+];
+
+// Question types: addPictures, subPictures, add, sub, missing, double, make10
+// (a type listed twice comes up twice as often)
+//   rocks = how many space rocks to choose from
+//   max   = biggest number used in the sums
+const LEVELS = {
+  easy:   { name: 'Easy',   emoji: '🐣', color: '#5fa61d', rocks: 3, max: 10,
+            blurb: 'Adding up to 10',
+            types: ['addPictures', 'addPictures', 'add'] },
+  medium: { name: 'Medium', emoji: '🐯', color: '#f08c00', rocks: 4, max: 10,
+            blurb: 'Add, take away & missing numbers',
+            types: ['add', 'add', 'sub', 'sub', 'missing', 'missing', 'subPictures'] },
+  hard:   { name: 'Hard',   emoji: '🦁', color: '#e63946', rocks: 4, max: 20,
+            blurb: 'Sums to 20, doubles, make 10',
+            types: ['add', 'add', 'sub', 'sub', 'double', 'make10', 'missing'] },
+};
+
+const PRAISE = ['Great job!', 'Super!', 'Well done!', 'Awesome!', 'You got it!', 'Fantastic!', 'Brilliant!', 'Blast off!'];
+const ROCK_COLORS = [0xc08552, 0xa267ac, 0x6c8ebf, 0xd4a373, 0x9a8c98, 0xe5989b, 0x52b69a];
+const CONFETTI_COLORS = [0xff4d6d, 0xffb703, 0x4cc9f0, 0x8ac926, 0xb5179e, 0xfb8500, 0x3a86ff];
+
+/* =====================================================================
+   HELPERS
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch { /* private mode: ignore */ } },
+};
+const stars = n => n === 1 ? 'star' : 'stars';
+
+// Wrong answers that are close to the right one (more useful than random ones)
+function makeOptions(ans, count, lo, hi, near = []) {
+  const opts = new Set([ans]);
+  for (const c of shuffle([...near, ans - 1, ans + 1, ans - 2, ans + 2, ans + 10, ans - 10])) {
+    if (opts.size >= count) break;
+    if (c >= lo && c <= hi) opts.add(c);
+  }
+  for (let guard = 0; opts.size < count && guard < 200; guard++) opts.add(rnd(lo, hi));
+  return shuffle([...opts]);
+}
+
+/* =====================================================================
+   QUESTION MAKERS
+   ===================================================================== */
+const GEN = {
+  addPictures(L) {
+    const a = rnd(1, L.max - 1), b = rnd(1, L.max - a);
+    return { text: `${a} + ${b} = ?`, sub: 'How many stars altogether?',
+      say: `${a} ${stars(a)}, and ${b} more ${stars(b)}. What is ${a} plus ${b}?`,
+      a: a + b, options: makeOptions(a + b, L.rocks, 1, L.max, [a, b]), visual: { groups: [a, b], op: '+' } };
+  },
+  subPictures(L) {
+    const a = rnd(3, L.max), b = rnd(1, a - 1);
+    return { text: `${a} − ${b} = ?`, sub: `${b} ${stars(b)} zoomed away! How many are left?`,
+      say: `There are ${a} stars. ${b} zoomed away. What is ${a} minus ${b}?`,
+      a: a - b, options: makeOptions(a - b, L.rocks, 0, L.max, [a, b]), visual: { groups: [a], gone: b } };
+  },
+  add(L) {
+    const a = rnd(L.max > 10 ? 3 : 1, L.max - 1), b = rnd(1, L.max - a);
+    return { text: `${a} + ${b} = ?`, say: `What is ${a} plus ${b}?`, a: a + b,
+      options: makeOptions(a + b, L.rocks, 0, L.max, [a, b]) };
+  },
+  sub(L) {
+    const a = rnd(L.max > 10 ? 8 : 2, L.max), b = rnd(1, a - 1);
+    return { text: `${a} − ${b} = ?`, say: `What is ${a} minus ${b}?`, a: a - b,
+      options: makeOptions(a - b, L.rocks, 0, L.max, [a, b, a + b]) };
+  },
+  missing(L) {
+    const total = rnd(3, L.max), known = rnd(1, total - 1), ans = total - known;
+    const near = [total, known, ans + 1, ans - 1];
+    return Math.random() < 0.6
+      ? { text: `${known} + ? = ${total}`, sub: 'Find the missing number', say: `${known} plus what makes ${total}?`,
+          a: ans, options: makeOptions(ans, L.rocks, 0, L.max, near) }
+      : { text: `? + ${known} = ${total}`, sub: 'Find the missing number', say: `What plus ${known} makes ${total}?`,
+          a: ans, options: makeOptions(ans, L.rocks, 0, L.max, near) };
+  },
+  double(L) {
+    const n = rnd(2, Math.floor(L.max / 2));
+    return { text: `Double ${n} = ?`, sub: `${n} + ${n}`, say: `What is double ${n}? That is ${n} plus ${n}.`,
+      a: 2 * n, options: makeOptions(2 * n, L.rocks, 0, L.max, [n, n + 1, 2 * n + 1, 2 * n - 1, 2 * n + 2]) };
+  },
+  make10() {
+    const k = rnd(1, 9), ans = 10 - k;
+    return { text: `${k} + ? = 10`, sub: 'Make 10!', say: `Let's make 10! ${k} plus what makes 10?`,
+      a: ans, options: makeOptions(ans, 4, 0, 10, [k, ans + 1, ans - 1, 10]) };
+  },
+};
+
+function makeQuestion(L, recent) {
+  for (let i = 0; i < 25; i++) {
+    let q;
+    if (MY_QUESTIONS.length) {
+      const m = pick(MY_QUESTIONS);
+      q = { text: m.q, say: m.say || m.q, a: m.a, options: makeOptions(m.a, L.rocks, 0, Math.max(10, m.a + 5)) };
+    } else {
+      q = GEN[pick(L.types)](L);
+    }
+    if (q.options.length > L.rocks) q.options = shuffle([q.a, ...shuffle(q.options.filter(o => o !== q.a)).slice(0, L.rocks - 1)]);
+    if (!recent.includes(q.text + (q.sub || '')) || i === 24) return q;
+  }
+}
+
+/* =====================================================================
+   SOUND + VOICE
+   ===================================================================== */
+let muted = store.get('nb-muted') === '1';
+let actx = null;
+function audio() {
+  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; } }
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+function tone(freq, dur = 0.15, type = 'sine', vol = 0.16, when = 0) {
+  if (muted) return; const ac = audio(); if (!ac) return;
+  const t = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+function noise(dur, freq, vol, type = 'lowpass') {
+  if (muted) return; const ac = audio(); if (!ac) return;
+  const len = Math.floor(ac.sampleRate * dur), buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
+  const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+  src.buffer = buf; f.type = type; f.frequency.value = freq; g.gain.value = vol;
+  src.connect(f).connect(g).connect(ac.destination); src.start();
+}
+const sfx = {
+  laser() {
+    if (muted) return; const ac = audio(); if (!ac) return;
+    const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'square'; o.frequency.setValueAtTime(1600, t); o.frequency.exponentialRampToValueAtTime(240, t + 0.22);
+    g.gain.setValueAtTime(0.07, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.24);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + 0.26);
+  },
+  boom() { noise(0.45, 900, 0.9); noise(0.15, 2500, 0.35, 'bandpass'); },
+  correct() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.2, 'triangle', 0.14, 0.05 + i * 0.08)); },
+  wrong() { tone(260, 0.22, 'sine', 0.14); tone(196, 0.3, 'sine', 0.12, 0.12); },
+  tick(n) { tone(480 + n * 45, 0.12, 'triangle', 0.14); },
+  fanfare() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, 0.28, 'triangle', 0.14, i * 0.14)); },
+};
+
+let voice = null;
+const hasSpeech = 'speechSynthesis' in window;
+function pickVoice() {
+  const vs = speechSynthesis.getVoices();
+  voice = vs.find(v => v.lang === 'en-IN') || vs.find(v => v.lang === 'en-GB') || vs.find(v => /^en/.test(v.lang)) || null;
+}
+if (hasSpeech) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function say(text) {
+  if (muted || !hasSpeech || !text) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text.replace(/−/g, ' minus ').replace(/ \? /g, ' what ').replace(/\+/g, ' plus ').replace(/=/g, ' makes '));
+  if (voice) u.voice = voice;
+  u.lang = voice ? voice.lang : 'en-IN'; u.rate = 0.88; u.pitch = 1.1;
+  speechSynthesis.speak(u);
+}
+
+const muteBtn = $('muteBtn');
+const showMute = () => { muteBtn.textContent = muted ? '🔇' : '🔊'; };
+showMute();
+muteBtn.onclick = () => {
+  muted = !muted; store.set('nb-muted', muted ? '1' : '0'); showMute();
+  if (muted && hasSpeech) speechSynthesis.cancel();
+};
+
+/* =====================================================================
+   3D SCENE
+   ===================================================================== */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.body.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = (() => {
+  const c = document.createElement('canvas'); c.width = 4; c.height = 256;
+  const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#1c1a5e'); gr.addColorStop(0.55, '#3b2c8a'); gr.addColorStop(1, '#7b4fb8');
+  g.fillStyle = gr; g.fillRect(0, 0, 4, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 300);
+scene.add(new THREE.HemisphereLight(0xdfe7ff, 0x6a4c93, 1.6));
+const sunLight = new THREE.DirectionalLight(0xffffff, 2.0);
+sunLight.position.set(4, 7, 8);
+scene.add(sunLight);
+
+// Starfield: round glowing dots that drift down (like the rocket is flying up)
+const dotTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,.8)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+const starLayers = [];
+for (const [count, size, col] of [[380, 0.45, 0xffffff], [160, 0.75, 0xfff1a8]]) {
+  const pos = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) { pos[i * 3] = (Math.random() - 0.5) * 140; pos[i * 3 + 1] = (Math.random() - 0.5) * 80; pos[i * 3 + 2] = -25 - Math.random() * 40; }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size, map: dotTex, color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  starLayers.push(pts); scene.add(pts);
+}
+
+// Friendly planets in the background
+const planetGeo = new THREE.SphereGeometry(1, 48, 32);
+function planet(color, ring) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(planetGeo, new THREE.MeshStandardMaterial({ color, roughness: 0.7, emissive: color, emissiveIntensity: 0.18 }));
+  g.add(body);
+  if (ring) {
+    const r = new THREE.Mesh(new THREE.RingGeometry(1.35, 1.9, 64), new THREE.MeshStandardMaterial({ color: ring, side: THREE.DoubleSide, roughness: 0.6, emissive: ring, emissiveIntensity: 0.25 }));
+    r.rotation.x = 1.25; r.rotation.y = 0.25; g.add(r);
+  }
+  scene.add(g); return g;
+}
+const planets = [
+  { p: planet(0xff9e7a, 0xffe0a3), fx: -0.62, fy: 0.5, z: -30, size: 0.09 },
+  { p: planet(0x56cfe1, null), fx: 0.7, fy: 0.08, z: -36, size: 0.06 },
+  { p: planet(0xc77dff, null), fx: -0.78, fy: -0.42, z: -40, size: 0.035 },
+  { p: planet(0xf9f1dc, null), fx: 0.45, fy: 0.62, z: -34, size: 0.025 },
+];
+
+// Fit the scene to any screen (wide monitor or tall phone)
+const TAN = Math.tan(THREE.MathUtils.degToRad(25));
+const view = { w: 16, h: 9, dist: 10 };
+const halfH = z => TAN * (view.dist - z);   // visible half-height at depth z
+function layout() {
+  const aspect = window.innerWidth / window.innerHeight;
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = aspect;
+  view.dist = Math.max(9 / (2 * TAN), 7 / (2 * TAN * aspect));
+  view.h = 2 * TAN * view.dist; view.w = view.h * aspect;
+  camera.position.set(0, 0, view.dist); camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix();
+
+  for (const pl of planets) {
+    const hh = halfH(pl.z);
+    pl.p.position.set(pl.fx * hh * aspect * (aspect < 1 ? 1.25 : 1), pl.fy * hh, pl.z); // on a tall phone, push planets to the edges
+    pl.p.scale.setScalar(hh * pl.size * (aspect < 1 ? 1.15 : 1));
+  }
+  placeRocket(); placeRocks(); placeVisual();
+}
+
+// Free space on screen (in 3D units) between the question card and the rocket
+function zones() {
+  const card = $('qcard');
+  const px = card.classList.contains('hidden') ? window.innerHeight * 0.2 : card.getBoundingClientRect().bottom + 8;
+  return { top: view.h / 2 - (px / window.innerHeight) * view.h, bottom: rocketTop + 0.15 };
+}
+
+/* ---------- text labels drawn on a canvas ---------- */
+function textSprite(text, { color = '#ffffff', stroke = '#1d3557', scale = 1, circle = null } = {}) {
+  const size = 256, c = document.createElement('canvas'); c.width = c.height = size;
+  const g = c.getContext('2d');
+  if (circle) { g.fillStyle = circle; g.beginPath(); g.arc(size / 2, size / 2, size * 0.46, 0, Math.PI * 2); g.fill(); }
+  const fs = text.length > 2 ? size * 0.42 : text.length > 1 ? size * 0.56 : size * 0.66;
+  g.font = `800 ${fs}px "Baloo 2", "Arial Rounded MT Bold", Arial, sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+  if (stroke) { g.lineWidth = size * 0.09; g.strokeStyle = stroke; g.strokeText(text, size / 2, size * 0.55); }
+  g.fillStyle = color; g.fillText(text, size / 2, size * 0.55);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+  s.scale.setScalar(scale);
+  return s;
+}
+function disposeTree(obj) {
+  obj.traverse(o => {
+    if (o.material && !o.userData.sharedMat) { o.material.map?.dispose(); o.material.dispose(); }
+    if (o.geometry && o.userData.ownGeo) o.geometry.dispose();
+  });
+}
+
+/* ---------- the rocket ---------- */
+const rocket = new THREE.Group();          // positioned + aimed
+const rocketBody = new THREE.Group();      // bobs inside
+rocket.add(rocketBody); scene.add(rocket);
+const flames = [];
+{
+  const white = new THREE.MeshStandardMaterial({ color: 0xf8f9fa, roughness: 0.35, metalness: 0.1 });
+  const red = new THREE.MeshStandardMaterial({ color: 0xff4d6d, roughness: 0.4 });
+  const prof = [[0.0, -0.62], [0.3, -0.62], [0.4, -0.4], [0.44, -0.05], [0.42, 0.3], [0.37, 0.5]].map(([x, y]) => new THREE.Vector2(x, y));
+  rocketBody.add(new THREE.Mesh(new THREE.LatheGeometry(prof, 32), white));
+  const noseProf = [[0.37, 0.5], [0.33, 0.66], [0.22, 0.82], [0.08, 0.94], [0.0, 0.97]].map(([x, y]) => new THREE.Vector2(x, y));
+  rocketBody.add(new THREE.Mesh(new THREE.LatheGeometry(noseProf, 32), red));
+  const band = new THREE.Mesh(new THREE.TorusGeometry(0.415, 0.035, 10, 40), red);
+  band.rotation.x = Math.PI / 2; band.position.y = -0.35; rocketBody.add(band);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.045, 12, 32), new THREE.MeshStandardMaterial({ color: 0xffb703, metalness: 0.4, roughness: 0.3 }));
+  rim.position.set(0, 0.14, 0.42); rocketBody.add(rim);
+  const glass = new THREE.Mesh(new THREE.CircleGeometry(0.16, 32), new THREE.MeshStandardMaterial({ color: 0x4cc9f0, emissive: 0x2a7fbf, emissiveIntensity: 0.6, roughness: 0.1 }));
+  glass.position.set(0, 0.14, 0.425); rocketBody.add(glass);
+  const shine = new THREE.Mesh(new THREE.CircleGeometry(0.05, 16), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  shine.position.set(-0.05, 0.19, 0.43); rocketBody.add(shine);
+  const finShape = new THREE.Shape(); finShape.moveTo(0, 0.25); finShape.lineTo(0.34, -0.25); finShape.lineTo(0.34, -0.5); finShape.lineTo(0, -0.3); finShape.closePath();
+  const finGeo = new THREE.ExtrudeGeometry(finShape, { depth: 0.07, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 2 });
+  finGeo.translate(0, 0, -0.035);
+  for (const a of [0, 2.09, 4.19]) {
+    const pivot = new THREE.Group(); // three fins spread round the body
+    const fin = new THREE.Mesh(finGeo, red); fin.position.set(0.36, -0.22, 0); pivot.add(fin);
+    pivot.rotation.y = a - Math.PI / 2 + 0.52; rocketBody.add(pivot);
+  }
+  const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.14, 24), new THREE.MeshStandardMaterial({ color: 0x8d99ae, metalness: 0.5, roughness: 0.4 }));
+  nozzle.position.y = -0.68; rocketBody.add(nozzle);
+  for (const [r, h, col, op] of [[0.24, 0.6, 0xff8c42, 0.85], [0.14, 0.42, 0xffe066, 0.95]]) {
+    const f = new THREE.Mesh(new THREE.ConeGeometry(r, h, 20), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false }));
+    f.rotation.x = Math.PI; f.position.y = -0.75 - h / 2; f.userData.h = h;
+    rocketBody.add(f); flames.push(f);
+  }
+}
+let rocketScale = 1, rocketTop = -3, rocketAim = 0, rocketKick = 0;
+const NOSE = new THREE.Vector3(0, 0.97, 0);
+function placeRocket() {
+  rocketScale = clamp(view.h * 0.085, 0.7, 0.95);
+  rocket.scale.setScalar(rocketScale);
+  rocket.position.set(0, -halfH(1) + 1.2 * rocketScale + 0.04, 1);
+  rocketTop = rocket.position.y + 0.97 * rocketScale;
+}
+
+/* ---------- space rocks ---------- */
+function rockGeometry(seed) {
+  const g = new THREE.IcosahedronGeometry(0.65, 2), p = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i).normalize();
+    const n = Math.sin(v.x * 4.1 + seed) * Math.cos(v.y * 3.7 + seed * 2) * 0.5 + Math.sin(v.z * 5.3 + seed * 3) * 0.3;
+    v.multiplyScalar(0.65 * (1 + 0.13 * n));
+    p.setXYZ(i, v.x, v.y * 0.92, v.z * 0.85);
+  }
+  g.computeVertexNormals(); return g;
+}
+const ROCK_GEOS = [1.3, 2.7, 4.9].map(rockGeometry);
+const craterGeo = new THREE.SphereGeometry(0.15, 14, 10);
+const hitGeo = new THREE.SphereGeometry(0.92, 10, 8);
+const hitMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+const GREY = new THREE.Color(0x6c6a80), HINT = new THREE.Color(0xffe066);
+
+let rocks = [];       // every rock in the scene
+let roundRocks = [];  // the answer rocks for the current question
+const belt = { rows: 1, spacing: 4, len: 18, sc: 1, rowY: [0], amp: 0.2, top: 0 };
+const beltOffset = [0, 0], beltDir = [1, -1];
+
+function makeRock(num, color) {
+  const group = new THREE.Group();
+  const spin = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.85, flatShading: true });
+  const craterMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(color).multiplyScalar(0.7), roughness: 1, flatShading: true });
+  const body = new THREE.Mesh(pick(ROCK_GEOS), mat); body.userData.sharedGeo = true;
+  spin.add(body);
+  for (let i = 0; i < 4; i++) {
+    const c = new THREE.Mesh(craterGeo, craterMat);
+    const d = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+    c.position.copy(d.multiplyScalar(0.56)); c.scale.setScalar(0.7 + Math.random() * 0.7);
+    c.userData.sharedMat = i > 0; spin.add(c);
+  }
+  const label = textSprite(String(num), { scale: 1.15 }); label.position.set(0, 0, 0.3);
+  label.material.depthTest = false; label.renderOrder = 2; // always drawn on top of its rock
+  const hit = new THREE.Mesh(hitGeo, hitMat); hit.userData.sharedMat = true;
+  group.add(spin, label, hit);
+  const r = { group, spin, mat, label, hit, num, color: new THREE.Color(color), state: 'arriving', slot: 0, row: 0,
+    sc: 1, arrive: 0, delay: 0, phase: Math.random() * 6.28, shake: 0, hint: false, grey: 0, x: 0, y: 0, z: 0,
+    vel: new THREE.Vector3(), spinV: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(0.9) };
+  hit.userData.rock = r;
+  rocks.push(r); scene.add(group);
+  return r;
+}
+
+function placeRocks() {
+  const n = roundRocks.length; if (!n) return;
+  const z = zones(), hasVis = !!visual, aspect = view.w / view.h;
+  const rows = n >= 4 && aspect < 0.8 ? 2 : 1;
+  const perRow = Math.ceil(n / rows);
+  const freeH0 = z.top - z.bottom;
+  let sc = Math.min(1.3, (view.w / perRow) / 1.95);
+  if (hasVis) sc = Math.min(sc, Math.max(0.85, freeH0 * 0.55 / 1.9)); // short screens: leave room for the counting stars
+  const d = 1.9 * sc;                          // a rock's width incl. hit area
+  const spacing = (view.w + d) / perRow;       // belt loops just past the screen edges
+  const rowGap = rows < 2 ? 0 : hasVis ? 2.4 * sc : clamp((z.top - z.bottom - d) * 0.42, 2.3 * sc, 3.6 * sc), span = (rows - 1) * rowGap;
+  const freeH = freeH0;
+  const amp = hasVis || rows > 1 ? 0.15 * sc : clamp((freeH - d) * 0.14, 0.15, 1.1);
+  const yMid = hasVis ? z.bottom + span / 2 + 0.92 * sc + amp : z.bottom + freeH * 0.47;
+  Object.assign(belt, { rows, spacing, len: spacing * perRow, sc, amp,
+    rowY: Array.from({ length: rows }, (_, r) => yMid + span / 2 - r * rowGap) });
+  belt.top = yMid + span / 2 + 0.92 * sc + amp;
+  roundRocks.forEach((r, i) => { r.row = i % rows; r.slot = Math.floor(i / rows); r.sc = sc; });
+}
+
+function beltPos(r, t) {
+  const L = belt.len;
+  const raw = r.slot * belt.spacing + beltOffset[r.row] + (r.row ? belt.spacing / 2 : 0);
+  const x = ((raw % L) + L) % L - L / 2;
+  const y = (belt.rowY[r.row] ?? 0) + (r.slot % 2 ? -1 : 1) * belt.amp + Math.sin(t * 1.3 + r.phase) * 0.1 * r.sc;
+  return [x, y];
+}
+
+function spawnRocks(q) {
+  const colors = shuffle([...ROCK_COLORS]);
+  beltOffset[0] = Math.random() * 3; beltOffset[1] = Math.random() * 3;
+  const d = Math.random() < 0.5 ? 1 : -1; beltDir[0] = d; beltDir[1] = -d;
+  roundRocks = q.options.map((num, i) => { const r = makeRock(num, colors[i % colors.length]); r.delay = i * 0.12; return r; });
+  placeRocks();
+  roundRocks.forEach(r => { r.group.scale.setScalar(0.001); r.group.position.set(0, 0, -30); });
+}
+
+function removeRock(r) {
+  scene.remove(r.group); disposeTree(r.group);
+  rocks = rocks.filter(x => x !== r);
+}
+const tappable = r => (r.state === 'arriving' && r.arrive > 0.35) || r.state === 'idle';
+
+/* ---------- stars for counting ---------- */
+const starGeo = (() => {
+  const s = new THREE.Shape();
+  for (let i = 0; i < 10; i++) {
+    const a = Math.PI / 2 + i * Math.PI / 5, rad = i % 2 ? 0.17 : 0.4;
+    i ? s.lineTo(Math.cos(a) * rad, Math.sin(a) * rad) : s.moveTo(Math.cos(a) * rad, Math.sin(a) * rad);
+  }
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.1, bevelEnabled: true, bevelSize: 0.05, bevelThickness: 0.06, bevelSegments: 3 });
+  g.center(); return g;
+})();
+const starMat = new THREE.MeshStandardMaterial({ color: 0xffd23f, emissive: 0xffa600, emissiveIntensity: 0.35, roughness: 0.35, metalness: 0.1 });
+const ghostMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.2, depthWrite: false });
+let visual = null, starItems = [], starBodies = [], counted = 0;
+
+function showVisual(spec) {
+  counted = 0;
+  const root = new THREE.Group(), S = 0.95, GAP = 0.25, parts = [];
+  const wide = view.w / view.h > 1.5; // wide, short screen: one long row per group (with a gap after 5)
+  spec.groups.forEach((n, gi) => {
+    if (gi > 0) parts.push({ obj: textSprite(spec.op || '+', { scale: 1.1 }), w: 1.0, h: 1 });
+    const g = new THREE.Group(), perRow = wide ? 10 : 5, cols = Math.min(n, perRow), rows = Math.ceil(n / perRow);
+    const xs = Array.from({ length: cols }, (_, c) => c * S + (c >= 5 ? 0.3 : 0)), gw = xs[cols - 1] + S;
+    for (let i = 0; i < n; i++) {
+      const gone = spec.gone && i >= n - spec.gone;
+      const st = new THREE.Group();
+      const body = new THREE.Mesh(starGeo, gone ? ghostMat : starMat); body.userData.sharedMat = true;
+      st.add(body);
+      st.position.set(xs[i % perRow] + S / 2 - gw / 2, ((rows - 1) / 2 - Math.floor(i / perRow)) * S, 0);
+      st.userData = { gone, counted: false, hop: 0, baseY: st.position.y, phase: Math.random() * 6 };
+      body.userData.star = st;
+      g.add(st); starItems.push(st);
+      if (!gone) starBodies.push(body);
+    }
+    parts.push({ obj: g, w: gw, h: rows * S });
+  });
+  if (view.w / view.h < 0.8) { // tall phone: stack the groups top to bottom (first group, +, second group)
+    const total = parts.reduce((s, p) => s + p.h, 0) + GAP * (parts.length - 1);
+    let y = total / 2;
+    for (const p of parts) { p.obj.position.y = y - p.h / 2; root.add(p.obj); y -= p.h + GAP; }
+    root.userData = { w: Math.max(...parts.map(p => p.w)), h: total, appear: 0, fit: 1 };
+  } else {
+    const total = parts.reduce((s, p) => s + p.w, 0) + GAP * (parts.length - 1);
+    let x = -total / 2;
+    for (const p of parts) { p.obj.position.x = x + p.w / 2; root.add(p.obj); x += p.w + GAP; }
+    root.userData = { w: total, h: Math.max(...parts.map(p => p.h)), appear: 0, fit: 1 };
+  }
+  visual = root; scene.add(root);
+  placeVisual();
+}
+function placeVisual() {
+  if (!visual) return;
+  const z = zones(), lo = belt.top + 0.15, hi = z.top - 0.3; // room above for the counting tags
+  const fit = Math.min(1.35, (view.w * 0.92) / visual.userData.w, Math.max(0.3, (hi - lo) / (visual.userData.h + 0.3)));
+  visual.userData.fit = fit;
+  visual.position.set(0, (lo + hi) / 2, 0.5);
+}
+function clearVisual() {
+  if (visual) { scene.remove(visual); disposeTree(visual); }
+  visual = null; starItems = []; starBodies = [];
+}
+
+/* ---------- laser, bursts & confetti ---------- */
+const unitCyl = new THREE.CylinderGeometry(1, 1, 1, 10, 1, true);
+const lasers = [];
+function fireLaser(to) {
+  const from = rocket.localToWorld(NOSE.clone());
+  const dir = to.clone().sub(from), len = dir.length(); dir.normalize();
+  const g = new THREE.Group();
+  for (const [r, col, op] of [[0.16, 0xff5ec8, 0.55], [0.06, 0xffffff, 1]]) {
+    const m = new THREE.Mesh(unitCyl, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false }));
+    m.scale.set(r, len, r); m.userData.r = r; g.add(m);
+  }
+  g.position.copy(from).addScaledVector(dir, len / 2);
+  g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+  scene.add(g); lasers.push({ g, life: 0.32, max: 0.32 });
+  burst(from, 0xffffff, 8, 'spark', 0.6);
+}
+
+const shardGeo = new THREE.TetrahedronGeometry(0.16);
+const confGeo = new THREE.PlaneGeometry(0.14, 0.24);
+const sparkGeo = new THREE.PlaneGeometry(0.4, 0.4);
+const ringGeo = new THREE.RingGeometry(0.7, 0.9, 40);
+const particles = [];
+function burst(pos, color, n, kind = 'shard', scale = 1) {
+  for (let i = 0; i < n; i++) {
+    const geo = kind === 'confetti' ? confGeo : kind === 'spark' ? sparkGeo : shardGeo;
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      color: kind === 'confetti' ? pick(CONFETTI_COLORS) : kind === 'spark' ? pick([0xffffff, 0xffe066, 0x9be7ff]) : color,
+      map: kind === 'spark' ? dotTex : null, side: THREE.DoubleSide, transparent: true, depthWrite: kind !== 'spark',
+      blending: kind === 'spark' ? THREE.AdditiveBlending : THREE.NormalBlending }));
+    m.position.copy(pos); m.scale.setScalar(scale * (kind === 'shard' ? 0.6 + Math.random() * 0.9 : 1));
+    const a = Math.random() * Math.PI * 2, s = (kind === 'confetti' ? 3 + Math.random() * 4 : 2 + Math.random() * 4) * scale;
+    const life = kind === 'confetti' ? 1.7 : kind === 'spark' ? 0.6 : 0.9;
+    particles.push({ m, life, max: life, g: kind === 'confetti' ? 9 : 2.5, spark: kind === 'spark',
+      v: new THREE.Vector3(Math.cos(a) * s, Math.sin(a) * s + (kind === 'confetti' ? 3 : 0), (Math.random() - 0.5) * 2),
+      spin: new THREE.Vector3(Math.random() * 9, Math.random() * 9, Math.random() * 9) });
+    scene.add(m);
+  }
+}
+const rings = [];
+function shockRing(pos, scale) {
+  const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  m.position.copy(pos); m.position.z += 0.2; scene.add(m);
+  rings.push({ m, life: 0.5, max: 0.5, scale });
+}
+
+// small timed steps (aim → fire → explode → next question) that run on game time inside the animation loop
+let steps = [];
+const later = (sec, fn) => steps.push({ t: sec, fn });
+
+/* =====================================================================
+   GAME
+   ===================================================================== */
+const game = { playing: false, levelKey: null, L: null, qi: 0, firstTry: 0, attempts: 0, q: null, busy: false, recent: [] };
+
+function setCard(q) {
+  const card = $('qcard');
+  $('qtext').textContent = q.text;
+  $('qsub').textContent = q.sub || '';
+  card.classList.remove('enter'); void card.offsetWidth; card.classList.add('enter');
+}
+function updateHud(bump) {
+  $('starCount').textContent = game.firstTry;
+  $('qnum').textContent = `${Math.min(game.qi + 1, QUESTIONS_PER_ROUND)} / ${QUESTIONS_PER_ROUND}`;
+  if (bump) { const s = $('starCount'); s.classList.remove('bump'); void s.offsetWidth; s.classList.add('bump'); }
+}
+function toast(text, kind = '') {
+  const t = $('toast');
+  t.textContent = text; t.className = kind; void t.offsetWidth; t.className = `${kind} show`;
+}
+
+function flyAway(r) {
+  if (r.state === 'away' || r.state === 'blasted') return;
+  r.state = 'away';
+  const p = r.group.position;
+  r.vel.set(p.x >= 0 ? 6 : -6, 1.5 + Math.random(), -4);
+}
+
+function clearRound() {
+  steps = []; rocketAim = 0; // cancel any pending laser / next-question steps
+  roundRocks.forEach(r => r.state === 'blasted' ? removeRock(r) : flyAway(r));
+  roundRocks = [];
+  clearVisual();
+}
+
+function startGame(key) {
+  audio();
+  rocks.filter(r => r.state === 'deco').forEach(removeRock); // clear the menu's floating rocks
+  steps = [];
+  Object.assign(game, { playing: true, levelKey: key, L: LEVELS[key], qi: 0, firstTry: 0, recent: [] });
+  $('startScreen').classList.add('hidden'); $('endScreen').classList.add('hidden');
+  ['qcard', 'stats', 'homeBtn'].forEach(id => $(id).classList.remove('hidden'));
+  nextQuestion();
+}
+
+function nextQuestion() {
+  clearRound();
+  if (game.qi >= QUESTIONS_PER_ROUND) return endGame();
+  const q = makeQuestion(game.L, game.recent);
+  game.recent.push(q.text + (q.sub || '')); if (game.recent.length > 5) game.recent.shift();
+  Object.assign(game, { q, attempts: 0, busy: false });
+  setCard(q); updateHud();
+  if (q.visual) showVisual(q.visual);
+  spawnRocks(q);
+  placeVisual();
+  say(q.say);
+}
+
+function tapRock(r) {
+  if (game.busy) return;
+  const q = game.q;
+  if (r.num === q.a) {
+    game.busy = true;
+    r.state = 'blasted';
+    const target = r.group.position.clone();
+    const from = rocket.position;
+    rocketAim = clamp(-Math.atan2(target.x - from.x, target.y - from.y), -1.25, 1.25);
+    if (game.attempts === 0) game.firstTry++;
+    game.qi++;
+    later(0.16, () => { fireLaser(target); sfx.laser(); rocketKick = 1; });
+    later(0.3, () => {
+      removeRock(r);
+      burst(target, r.color.getHex(), 18, 'shard', r.sc); burst(target, 0, 16, 'spark', r.sc); burst(target, 0, 34, 'confetti', r.sc);
+      shockRing(target, r.sc);
+      sfx.boom(); sfx.correct();
+      updateHud(game.attempts === 0);
+      const msg = game.attempts === 0 ? pick(PRAISE) : 'Good! You found it!';
+      toast(msg); say(msg);
+      roundRocks.forEach(o => { if (o !== r) flyAway(o); });
+    });
+    later(1.1, () => { rocketAim = 0; });
+    later(1.8, nextQuestion);
+  } else {
+    game.attempts++;
+    r.state = 'dim'; r.shake = 1;
+    sfx.wrong();
+    const left = roundRocks.filter(tappable).length;
+    if (game.attempts === 1 && left > 1) {
+      toast('Oops! Try again 🙂', 'soft'); say('Oops! Try again.');
+    } else {
+      const right = roundRocks.find(o => o.num === q.a);
+      if (right) right.hint = true;
+      $('qsub').textContent = `The answer is ${q.a}. Blast it!`;
+      say(`The answer is ${q.a}. Blast it!`);
+    }
+  }
+}
+
+function tapStar(st) {
+  const d = st.userData;
+  d.hop = 1;
+  if (d.counted) { sfx.tick(0); return; }
+  d.counted = true; counted++;
+  const tag = textSprite(String(counted), { color: '#1d3557', stroke: null, circle: '#ffffff', scale: 0.5 });
+  tag.position.set(0, 0.6, 0.2); st.add(tag);
+  sfx.tick(counted); say(String(counted));
+}
+
+function endGame() {
+  game.playing = false;
+  ['qcard', 'stats'].forEach(id => $(id).classList.add('hidden'));
+  const s = game.firstTry, N = QUESTIONS_PER_ROUND;
+  const st = s >= Math.ceil(N * 0.9) ? 3 : s >= Math.ceil(N * 0.6) ? 2 : 1;
+  $('bigstars').innerHTML = [0, 1, 2].map(i => `<span class="${i < st ? '' : 'dim'}">⭐</span>`).join('');
+  $('endmsg').textContent = `${s} out of ${N} right on the first try!`;
+  const key = `nb-best-${game.levelKey}`, best = Number(store.get(key) || 0);
+  $('newbest').classList.toggle('hidden', !(s > best));
+  if (s > best) store.set(key, String(s));
+  $('endScreen').classList.remove('hidden');
+  sfx.fanfare();
+  say(`You got ${s} out of ${N}! ${st === 3 ? 'Amazing!' : st === 2 ? 'Great playing!' : 'Good try! Let\'s play again!'}`);
+  for (let i = 0; i < 4; i++) setTimeout(() => burst(new THREE.Vector3((Math.random() - 0.5) * view.w * 0.7, (Math.random() - 0.2) * view.h * 0.4, 0), 0, 40, 'confetti'), i * 250);
+}
+
+function goHome() {
+  game.playing = false; clearRound(); steps = []; rocketAim = 0;
+  if (hasSpeech) speechSynthesis.cancel();
+  ['qcard', 'stats', 'homeBtn'].forEach(id => $(id).classList.add('hidden'));
+  $('endScreen').classList.add('hidden');
+  buildLevelButtons();
+  $('startScreen').classList.remove('hidden');
+}
+
+function buildLevelButtons() {
+  const box = $('levels'); box.innerHTML = '';
+  for (const [key, L] of Object.entries(LEVELS)) {
+    const best = Number(store.get(`nb-best-${key}`) || 0);
+    const st = best >= Math.ceil(QUESTIONS_PER_ROUND * 0.9) ? 3 : best >= Math.ceil(QUESTIONS_PER_ROUND * 0.6) ? 2 : best > 0 ? 1 : 0;
+    const btn = document.createElement('button');
+    btn.className = 'lvl'; btn.style.background = L.color;
+    btn.innerHTML = `<span><b>${L.emoji} ${L.name}</b><small>${L.blurb}</small></span>
+      <span class="best">${[0, 1, 2].map(i => `<span class="${i < st ? '' : 'dim'}">⭐</span>`).join('')}</span>`;
+    btn.onclick = () => startGame(key);
+    box.appendChild(btn);
+  }
+}
+
+$('homeBtn').onclick = goHome;
+$('againBtn').onclick = () => startGame(game.levelKey);
+$('levelBtn').onclick = goHome;
+$('qcard').onclick = () => game.q && game.playing && say(game.q.say);
+
+/* ---------- tap / click ---------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (!game.playing) return;
+  audio();
+  ndc.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hr = ray.intersectObjects(roundRocks.filter(tappable).map(r => r.hit), false)[0];
+  if (hr) return tapRock(hr.object.userData.rock);
+  const hs = ray.intersectObjects(starBodies, false)[0];
+  if (hs) tapStar(hs.object.userData.star);
+});
+
+/* =====================================================================
+   ANIMATION LOOP
+   ===================================================================== */
+const clock = new THREE.Clock();
+let decoTimer = 0;
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+
+  // timed steps
+  for (const s of [...steps]) { if (!steps.includes(s)) continue; s.t -= dt; if (s.t <= 0) { steps.splice(steps.indexOf(s), 1); s.fn(); } }
+
+  // stars drift down, planets turn
+  starLayers.forEach((pts, li) => {
+    const p = pts.geometry.attributes.position, sp = (li ? 1.1 : 0.6) * dt;
+    for (let i = 0; i < p.count; i++) { let y = p.getY(i) - sp; if (y < -40) y += 80; p.setY(i, y); }
+    p.needsUpdate = true;
+    pts.material.opacity = 0.75 + 0.25 * Math.sin(t * (li ? 2.3 : 1.7));
+  });
+  planets.forEach((pl, i) => { pl.p.rotation.y += dt * 0.15; pl.p.position.y += Math.sin(t * 0.4 + i) * 0.002; });
+
+  // rocket: bob, aim, flame flicker, recoil
+  rocketKick = Math.max(0, rocketKick - dt * 4);
+  rocket.rotation.z += (rocketAim - rocket.rotation.z) * Math.min(1, dt * 14);
+  rocketBody.position.y = Math.sin(t * 2.2) * 0.06 - rocketKick * 0.18;
+  rocketBody.rotation.y = Math.sin(t * 0.7) * 0.35;
+  flames.forEach((f, i) => { const k = 0.8 + Math.random() * 0.4 + rocketKick * 0.6; f.scale.set(1, k, 1); f.position.y = -0.75 - f.userData.h * k / 2; });
+
+  // decorative rocks on the menu screens
+  if (!game.playing) {
+    decoTimer -= dt;
+    if (decoTimer <= 0 && rocks.length < 7) {
+      decoTimer = 1.4;
+      const r = makeRock(rnd(1, 20), pick(ROCK_COLORS));
+      r.state = 'deco'; r.sc = 0.7 + Math.random() * 0.5;
+      r.z = -2 - Math.random() * 6;
+      const hw = halfH(r.z) * camera.aspect + 1.5, dir = Math.random() < 0.5 ? 1 : -1;
+      r.x = -dir * hw; r.y = (Math.random() - 0.5) * halfH(r.z) * 1.4;
+      r.vel.set(dir * (0.7 + Math.random() * 0.6), (Math.random() - 0.5) * 0.3, 0);
+      r.group.scale.setScalar(r.sc);
+    }
+  }
+
+  // belt moves slowly; rocks loop round when they leave the screen
+  // once the hint is showing, the belt stops as soon as the right rock is fully on screen
+  const hinted = roundRocks.find(r => r.hint && r.state === 'idle');
+  const hold = hinted && Math.abs(hinted.group.position.x) < view.w / 2 - 1.1 * hinted.sc;
+  const sp = hold ? 0 : 0.32 * (belt.sc || 1) * dt;
+  beltOffset[0] += beltDir[0] * sp; beltOffset[1] += beltDir[1] * sp * 0.85;
+
+  for (const r of [...rocks]) {
+    const g = r.group;
+    if (r.state === 'arriving' || r.state === 'idle' || r.state === 'dim') {
+      if (r.delay > 0) { r.delay -= dt; continue; }
+      const [x, y] = beltPos(r, t);
+      if (r.state === 'arriving') {
+        r.arrive = Math.min(1, r.arrive + dt * 1.6);
+        if (r.arrive >= 1) r.state = 'idle';
+      }
+      const e = 1 - Math.pow(1 - r.arrive, 3);
+      r.shake = Math.max(0, r.shake - dt * 1.6);
+      g.position.set(x + Math.sin(t * 40) * 0.2 * r.shake, y, -22 * (1 - e));
+      let s = r.sc * Math.max(0.001, e);
+      if (r.state === 'dim') {
+        r.grey = Math.min(1, r.grey + dt * 2.5);
+        s *= 1 - 0.2 * r.grey;
+        r.mat.color.copy(r.color).lerp(GREY, r.grey * 0.8);
+        r.label.material.opacity = 1 - 0.55 * r.grey;
+      }
+      if (r.hint) {
+        const k = 0.5 + 0.5 * Math.sin(t * 8);
+        r.mat.emissive.copy(HINT).multiplyScalar(0.38 * k);
+        s *= 1 + 0.1 * k;
+      }
+      g.scale.setScalar(s);
+    } else if (r.state === 'blasted') {
+      r.shake = 0; // frozen in place while the laser hits it
+    } else if (r.state === 'away') {
+      g.position.addScaledVector(r.vel, dt);
+      const s = g.scale.x - dt * 1.2 * r.sc;
+      if (s <= 0.02) { removeRock(r); continue; }
+      g.scale.setScalar(s);
+    } else if (r.state === 'deco') {
+      r.x += r.vel.x * dt; r.y += r.vel.y * dt;
+      g.position.set(r.x, r.y + Math.sin(t * 1.2 + r.phase) * 0.15, r.z);
+      if (Math.abs(r.x) > halfH(r.z) * camera.aspect + 2) { removeRock(r); continue; }
+    }
+    r.spin.rotation.x += r.spinV.x * dt; r.spin.rotation.y += r.spinV.y * dt; r.spin.rotation.z += r.spinV.z * dt;
+  }
+
+  // counting stars: pop in, twinkle, hop when tapped
+  if (visual) {
+    const u = visual.userData;
+    u.appear = Math.min(1, u.appear + dt * 2.5);
+    const e = 1 + 2.7 * Math.pow(u.appear - 1, 3) + 1.7 * Math.pow(u.appear - 1, 2); // ease-out-back
+    visual.scale.setScalar(u.fit * e);
+    for (const st of starItems) {
+      const d = st.userData;
+      d.hop = Math.max(0, d.hop - dt * 3);
+      st.position.y = d.baseY + Math.sin(d.hop * Math.PI) * 0.35 + Math.sin(t * 2 + st.position.x) * 0.03;
+      st.children[0].rotation.y = Math.sin(t * 1.5 + d.phase) * 0.4 + d.hop * Math.PI * 2;
+    }
+  }
+
+  // lasers fade
+  for (let i = lasers.length - 1; i >= 0; i--) {
+    const L = lasers[i]; L.life -= dt;
+    if (L.life <= 0) { scene.remove(L.g); L.g.children.forEach(m => m.material.dispose()); lasers.splice(i, 1); continue; }
+    const k = L.life / L.max;
+    L.g.children.forEach(m => { m.scale.x = m.scale.z = m.userData.r * (0.4 + 0.6 * k); m.material.opacity = Math.min(1, k * 1.6); });
+  }
+  for (let i = rings.length - 1; i >= 0; i--) {
+    const R = rings[i]; R.life -= dt;
+    if (R.life <= 0) { scene.remove(R.m); R.m.material.dispose(); rings.splice(i, 1); continue; }
+    const k = 1 - R.life / R.max;
+    R.m.scale.setScalar(R.scale * (0.6 + k * 2.4)); R.m.material.opacity = 1 - k;
+  }
+
+  // pieces
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= dt;
+    if (p.life <= 0) { scene.remove(p.m); p.m.material.dispose(); particles.splice(i, 1); continue; }
+    p.v.y -= p.g * dt; p.m.position.addScaledVector(p.v, dt);
+    if (p.spark) p.m.quaternion.copy(camera.quaternion);
+    else { p.m.rotation.x += p.spin.x * dt; p.m.rotation.y += p.spin.y * dt; p.m.rotation.z += p.spin.z * dt; }
+    p.m.material.opacity = Math.min(1, (p.life / p.max) * 2);
+  }
+
+  renderer.render(scene, camera);
+});
+
+window.addEventListener('resize', layout);
+document.addEventListener('visibilitychange', () => { if (document.hidden && hasSpeech) speechSynthesis.cancel(); });
+buildLevelButtons();
+layout();
+window.__test = { game, camera, get rocks() { return roundRocks; }, get allRocks() { return rocks; }, get stars() { return starBodies; }, tappable }; // for testing only
+</script>
+</body>
+</html>

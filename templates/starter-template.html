@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Starter Template</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
+<!--
+  STARTER TEMPLATE for Open Learning Games.
+  Copy this file, rename it (e.g. maths-number-blaster.html) and build the game on top.
+  three.js is loaded from a CDN (pinned version) — needs internet the first time it opens,
+  after that the browser usually has it cached.
+-->
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #87ceeb;
+    font-family: "Comic Sans MS", "Chalkboard SE", system-ui, sans-serif; touch-action: none; }
+  #hud { position: fixed; top: 12px; left: 0; right: 0; text-align: center; pointer-events: none;
+    font-size: 28px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.4); }
+  #mute { position: fixed; top: 10px; right: 12px; font-size: 28px; background: rgba(255,255,255,.8);
+    border: 0; border-radius: 12px; padding: 6px 12px; cursor: pointer; }
+</style>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="hud">three.js is loading…</div>
+<button id="mute" aria-label="Mute">🔊</button>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ---------- QUESTIONS (edit here, no game code below needs changing) ----------
+const QUESTIONS = [
+  { q: '2 + 3', a: 5 },
+  { q: '4 + 1', a: 5 },
+];
+
+// ---------- SCENE ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(0, 1.5, 6);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x88aa66, 1.2));
+const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+sun.position.set(3, 5, 4);
+scene.add(sun);
+
+const ground = new THREE.Mesh(new THREE.CircleGeometry(8, 48),
+  new THREE.MeshStandardMaterial({ color: 0x7ccf5a }));
+ground.rotation.x = -Math.PI / 2; ground.position.y = -1;
+scene.add(ground);
+
+const cube = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 1.5),
+  new THREE.MeshStandardMaterial({ color: 0xff8c42 }));
+scene.add(cube);
+
+// ---------- TAP / CLICK (works for mouse and touch) ----------
+const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
+renderer.domElement.addEventListener('pointerdown', e => {
+  pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  raycaster.setFromCamera(pointer, camera);
+  if (raycaster.intersectObject(cube).length) {
+    cube.material.color.setHSL(Math.random(), 0.8, 0.6);
+    beep(660);
+  }
+});
+
+// ---------- SOUND + MUTE ----------
+let muted = localStorage.getItem('muted') === '1';
+const muteBtn = document.getElementById('mute');
+const setMuteIcon = () => muteBtn.textContent = muted ? '🔇' : '🔊';
+setMuteIcon();
+muteBtn.onclick = () => { muted = !muted; localStorage.setItem('muted', muted ? '1' : '0'); setMuteIcon(); };
+let audio;
+function beep(freq = 440, dur = 0.15) {
+  if (muted) return;
+  audio ??= new AudioContext();
+  const o = audio.createOscillator(), g = audio.createGain();
+  o.frequency.value = freq; o.connect(g); g.connect(audio.destination);
+  g.gain.setValueAtTime(0.2, audio.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + dur);
+  o.start(); o.stop(audio.currentTime + dur);
+}
+
+// ---------- LOOP ----------
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+document.getElementById('hud').textContent = `three.js r${THREE.REVISION} is working ✓ — tap the cube!`;
+renderer.setAnimationLoop(t => {
+  cube.rotation.x = t * 0.0005; cube.rotation.y = t * 0.0008;
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>

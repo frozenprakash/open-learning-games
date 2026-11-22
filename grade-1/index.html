@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Grade 1 · Open Learning Games</title>
+<meta name="description" content="Free 3D learning games for Grade 1: counting, sums, place value, fractions, shapes, money and reading sight words.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎈</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#fff8ec;--card:#ffffff;--ink:#2b2140;--muted:#6b6380;--line:#eadfcb;--maths:#ff7a2b;--english:#5b6cff;--link:#5b6cff}
+  @media (prefers-color-scheme:dark){:root{--bg:#141a33;--card:#1e2647;--ink:#f6f1ff;--muted:#a9b0d0;--line:#2f3a66;--maths:#ff9a4d;--english:#8f9bff;--link:#8f9bff}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Nunito,system-ui,sans-serif;line-height:1.45}
+  .wrap{max-width:960px;margin:0 auto;padding:18px 16px 40px}
+  h1,h2,.game b{font-family:"Baloo 2",system-ui,sans-serif;line-height:1.1}
+  .back{display:inline-block;color:var(--link);text-decoration:none;font-weight:700;padding:6px 0}
+  h1{font-size:clamp(34px,7vw,50px);margin:4px 0 2px}
+  .sub{color:var(--muted);margin:0 0 10px;font-size:17px}
+  h2{font-size:28px;margin:26px 0 10px;color:var(--c)}
+  .games{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+  .game{display:flex;gap:14px;align-items:center;text-decoration:none;color:inherit;background:var(--card);border:2px solid var(--line);border-radius:20px;padding:14px 16px;transition:transform .15s,border-color .15s}
+  .game:hover,.game:focus-visible{transform:translateY(-3px);border-color:var(--c)}
+  .game .ic{font-size:44px;line-height:1;flex:none}
+  .game b{display:block;font-size:22px}
+  .game span{color:var(--muted);font-size:15px}
+  .tag{display:inline-block;font-size:12px;font-weight:700;border:1px solid var(--line);border-radius:10px;padding:0 8px;margin-top:4px;color:var(--muted)}
+  footer{margin-top:30px;text-align:center;color:var(--muted);font-size:15px}
+  footer a{color:var(--link)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../">← All grades</a>
+  <h1>Grade 1</h1>
+  <p class="sub">Pick a game. Each one has Easy, Medium and Hard, or word lists to choose from.</p>
+
+  <section style="--c:var(--maths)">
+    <h2>➗ Maths</h2>
+    <div class="games">
+      <a class="game" href="maths/balloon-pop-party.html"><span class="ic">🎈</span><div><b>Balloon Pop Party</b><span>Counting, numbers to 100, simple sums</span></div></a>
+      <a class="game" href="maths/number-blaster.html"><span class="ic">🚀</span><div><b>Number Blaster</b><span>Adding and taking away to 20, missing numbers</span></div></a>
+      <a class="game" href="maths/number-tower.html"><span class="ic">🧱</span><div><b>Number Tower</b><span>Tens and ones with 3D blocks</span></div></a>
+      <a class="game" href="maths/pizza-party.html"><span class="ic">🍕</span><div><b>Pizza Party</b><span>Equal parts, halves, quarters, sharing</span></div></a>
+      <a class="game" href="maths/shape-hunter.html"><span class="ic">🔍</span><div><b>Shape Hunter</b><span>Spheres, cubes, cones, cylinders: what rolls, what stacks</span></div></a>
+      <a class="game" href="maths/money-market.html"><span class="ic">🛒</span><div><b>Money Market</b><span>Coins and notes (₹), paying the right amount, change</span></div></a>
+    </div>
+  </section>
+
+  <section style="--c:var(--english)">
+    <h2>🔤 English</h2>
+    <div class="games">
+      <a class="game" href="english/word-lanterns.html"><span class="ic">🏮</span><div><b>Word Lanterns</b><span>Read sight words out loud to light the lanterns</span><br><span class="tag">🎤 uses the microphone (Chrome)</span></div></a>
+    </div>
+  </section>
+
+  <footer>Topics follow the CBSE / NCERT Grade 1 syllabus. <a href="https://github.com/frozenprakash/open-learning-games">Suggest or add a game</a></footer>
+</div>
+</body>
+</html>

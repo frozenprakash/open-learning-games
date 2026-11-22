@@ -1,0 +1,1304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#ffb347">
+<title>Pizza Party</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍕</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
+<!--
+  🍕 PIZZA PARTY — Grade 1 maths game
+  Equal parts, halves, quarters and fair sharing with hungry friends.
+  Works with mouse (computer) and touch (phone/tablet).
+  To change the questions, scroll to "EASY-TO-EDIT SETTINGS" in the script below.
+-->
+<style>
+  :root {
+    --ink: #3d2314;
+    --card: rgba(255, 255, 255, 0.94);
+    --red: #e4572e;
+    --sun: #ffb347;
+    --good: #2a9d8f;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--sun);
+    font-family: "Baloo 2", "Comic Sans MS", "Chalkboard SE", system-ui, sans-serif; color: var(--ink); }
+  canvas { display: block; touch-action: none; }
+
+  #topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 5; pointer-events: none;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: calc(8px + env(safe-area-inset-top)) 12px 0; }
+  .chip { pointer-events: auto; background: var(--card); color: var(--ink); border: 0; border-radius: 999px;
+    min-height: 44px; min-width: 44px; padding: 4px 14px; font: inherit; font-size: 20px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 3px 0 rgba(0,0,0,.13); }
+  button.chip { cursor: pointer; touch-action: manipulation; }
+  #stats { gap: 14px; }
+  #starCount.bump { animation: bump .5s; display: inline-block; }
+  @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.7); } 100% { transform: scale(1); } }
+
+  #qcard { position: fixed; z-index: 5; left: 50%; transform: translateX(-50%);
+    top: calc(62px + env(safe-area-inset-top)); width: min(92vw, 660px);
+    background: var(--card); border-radius: 22px; padding: 6px 16px 8px; text-align: center; cursor: pointer;
+    box-shadow: 0 5px 0 rgba(0,0,0,.13); }
+  #qcard.enter { animation: cardIn .35s ease-out; }
+  @keyframes cardIn { from { transform: translateX(-50%) scale(.85); opacity: .3; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+  #qtext { font-size: clamp(26px, 7vw, 44px); font-weight: 800; line-height: 1.12; }
+  #qtext em { font-style: normal; color: var(--red); }
+  #qsub { font-size: clamp(16px, 4.2vw, 22px); font-weight: 600; opacity: .85; min-height: 1.3em; line-height: 1.3; }
+  #qsub.hint { opacity: 1; color: #1b7f74; font-weight: 800; }
+
+  #toast { position: fixed; z-index: 6; left: 50%; top: 46%; transform: translate(-50%, -50%) scale(0);
+    font-size: clamp(36px, 10vw, 64px); font-weight: 800; color: #fff; white-space: nowrap; pointer-events: none;
+    text-shadow: 0 4px 0 var(--good), 0 8px 16px rgba(0,0,0,.25); }
+  #toast.soft { text-shadow: 0 4px 0 #e76f51, 0 8px 16px rgba(0,0,0,.25); }
+  #toast.show { animation: toastIn 1.2s ease-out forwards; }
+  @keyframes toastIn {
+    0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+    20% { transform: translate(-50%, -50%) scale(1.15); }
+    35% { transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; }
+    100% { transform: translate(-50%, -60%) scale(1); opacity: 0; }
+  }
+
+  .overlay { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 14px; padding: 24px 16px; text-align: center;
+    background: rgba(255, 214, 150, .38); }
+  .overlay h1 { margin: 0; font-size: clamp(42px, 12vw, 80px); line-height: 1; color: #fff;
+    text-shadow: 0 5px 0 var(--red), 0 8px 18px rgba(0,0,0,.25); }
+  .overlay .say { margin: 0; font-size: clamp(18px, 4.8vw, 24px); font-weight: 600;
+    background: var(--card); padding: 6px 18px; border-radius: 16px; }
+  .levels { display: flex; flex-direction: column; gap: 12px; width: min(88vw, 380px); margin-top: 6px; }
+  .lvl { font: inherit; border: 0; border-radius: 22px; padding: 10px 18px; color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left;
+    box-shadow: 0 6px 0 rgba(0,0,0,.2); touch-action: manipulation; text-shadow: 0 2px 0 rgba(0,0,0,.18); }
+  .lvl:active, .big:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.2); }
+  .lvl b { font-size: 28px; display: block; line-height: 1.1; }
+  .lvl small { font-size: 15px; font-weight: 600; }
+  .lvl .best { font-size: 20px; white-space: nowrap; }
+  .dim { filter: grayscale(1); opacity: .35; }
+  .big { font: inherit; font-size: 26px; font-weight: 800; border: 0; border-radius: 20px; padding: 10px 28px;
+    color: #fff; background: var(--red); cursor: pointer; box-shadow: 0 6px 0 rgba(0,0,0,.2); touch-action: manipulation; }
+  .big.alt { background: #fff; color: var(--ink); }
+  #bigstars { font-size: clamp(60px, 17vw, 104px); letter-spacing: 6px; line-height: 1.1; }
+  #newbest { color: #fff; font-weight: 800; font-size: 24px; text-shadow: 0 3px 0 var(--good); }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .hidden { display: none !important; }
+  @media (max-height: 500px) { /* phone turned sideways */
+    #qcard { top: calc(58px + env(safe-area-inset-top)); width: min(72vw, 600px); padding: 2px 12px 4px; }
+    #qtext { font-size: 26px; }
+    #qsub { font-size: 16px; }
+    .overlay { gap: 8px; padding: 10px; }
+    .overlay h1 { font-size: 40px; }
+    .overlay h1 br { display: none; }
+    .levels { flex-direction: row; width: min(96vw, 760px); }
+    .lvl { flex: 1; flex-direction: column; align-items: flex-start; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+} }
+</script>
+</head>
+<body>
+
+<div id="topbar">
+  <button class="chip hidden" id="homeBtn" aria-label="Home">🏠</button>
+  <div class="chip hidden" id="stats"><span>⭐ <span id="starCount">0</span></span><span id="qnum">1 / 10</span></div>
+  <button class="chip" id="muteBtn" aria-label="Sound on or off">🔊</button>
+</div>
+
+<div id="qcard" class="hidden" title="Tap to hear the question again">
+  <div id="qtext"></div>
+  <div id="qsub"></div>
+</div>
+
+<div id="toast"></div>
+
+<div class="overlay" id="startScreen">
+  <h1>🍕 Pizza<br>Party</h1>
+  <p class="say">Cut, share and munch with your friends!</p>
+  <div class="levels" id="levels"></div>
+</div>
+
+<div class="overlay hidden" id="endScreen">
+  <h1>Yummy work!</h1>
+  <div id="bigstars"></div>
+  <p class="say" id="endmsg"></p>
+  <div id="newbest" class="hidden">🏆 New best score!</div>
+  <div class="row">
+    <button class="big" id="againBtn">Play again</button>
+    <button class="big alt" id="levelBtn">Change level</button>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* =====================================================================
+   EASY-TO-EDIT SETTINGS
+   ===================================================================== */
+const QUESTIONS_PER_ROUND = 10;
+
+// Your own questions (e.g. this week's homework). If this list has ANY
+// question in it, the game uses ONLY these questions (answered with number plates).
+//   q   = what is written on screen
+//   a   = the right answer (a number)
+//   say = what the voice reads out (optional)
+const MY_QUESTIONS = [
+  // { q: 'Half of 6 = ?', say: 'What is half of 6?', a: 3 },
+  // { q: 'Share 8 between 2', say: 'Share 8 sweets between 2 friends. How many each?', a: 4 },
+];
+
+// Question types:
+//   equal        – which pizza is cut into EQUAL parts?
+//   half         – which pizza is cut in HALF?
+//   halfEaten    – tap the pizza with one half eaten
+//   quarter      – which pizza is cut into 4 equal parts (quarters)?
+//   quarterEaten – tap the pizza with one quarter eaten
+//   share        – share N toppings equally between friends, how many each?
+//   halfOf       – half of N is?
+//   howMany      – how many halves / quarters make a whole pizza?
+// (a type listed twice comes up twice as often)
+//   pizzas      = how many pizzas to choose from
+//   plates      = how many number plates to choose from
+//   cutParts    = into how many parts pizzas are cut in "equal" questions
+//   shareMax    = most toppings to share,  shareFriends = how many friends can share
+//   halfOfMax   = biggest number for "half of"
+const LEVELS = {
+  easy:   { name: 'Easy',   emoji: '🐣', color: '#5fa61d', pizzas: 3, plates: 3,
+            cutParts: [2, 4], shareMin: 2, shareMax: 6, shareFriends: [2], halfOfMax: 6,
+            blurb: 'Equal parts, halves, sharing',
+            types: ['equal', 'equal', 'half', 'half', 'halfEaten', 'share', 'share', 'share'] },
+  medium: { name: 'Medium', emoji: '🐯', color: '#f08c00', pizzas: 4, plates: 4,
+            cutParts: [2, 3, 4], shareMin: 4, shareMax: 10, shareFriends: [2], halfOfMax: 10,
+            blurb: 'Halves, quarters, half of 10',
+            types: ['half', 'quarter', 'equal', 'halfEaten', 'share', 'share', 'halfOf', 'halfOf'] },
+  hard:   { name: 'Hard',   emoji: '🦁', color: '#e63946', pizzas: 4, plates: 4,
+            cutParts: [2, 3, 4], shareMin: 4, shareMax: 12, shareFriends: [2, 3, 4], halfOfMax: 20,
+            blurb: 'Quarters, share with 4, half of 20',
+            types: ['quarter', 'quarterEaten', 'equal', 'share', 'share', 'halfOf', 'halfOf', 'howMany', 'howMany'] },
+};
+
+const PRAISE = ['Great job!', 'Super!', 'Well done!', 'Yummy!', 'You got it!', 'Fantastic!', 'Brilliant!'];
+const PLATE_COLORS = [0xff6b6b, 0x4dabf7, 0x51cf66, 0xfab005, 0xcc5de8, 0xff922b];
+const CONFETTI = [0xff4d6d, 0xffb703, 0x4cc9f0, 0x8ac926, 0xb5179e, 0xfb8500, 0x3a86ff];
+const THINGS = {
+  olive:    { one: 'olive', many: 'olives' },
+  tomato:   { one: 'tomato', many: 'tomatoes' },
+  mushroom: { one: 'mushroom', many: 'mushrooms' },
+  slice:    { one: 'pizza slice', many: 'pizza slices' },
+};
+const SHARE_THINGS = ['olive', 'tomato', 'mushroom', 'slice'];
+const TOPPING_THINGS = ['olive', 'tomato', 'mushroom'];
+
+/* =====================================================================
+   HELPERS
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const TAU = Math.PI * 2;
+const easeBack = u => 1 + 2.7 * Math.pow(u - 1, 3) + 1.7 * Math.pow(u - 1, 2);
+const easeInOut = u => u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch { /* private mode: ignore */ } },
+};
+const many = (k, n) => n === 1 ? THINGS[k].one : THINGS[k].many;
+
+// Wrong answers that are close to the right one (more useful than random ones)
+function makeOptions(ans, count, lo, hi, near = []) {
+  const opts = new Set([ans]);
+  for (const c of [...shuffle(near.slice()), ...shuffle([ans - 1, ans + 1, ans - 2, ans + 2, ans * 2])]) {
+    if (opts.size >= count) break;
+    if (c >= lo && c <= hi) opts.add(c);
+  }
+  for (let guard = 0; opts.size < count && guard < 200; guard++) opts.add(rnd(lo, hi));
+  return shuffle([...opts]);
+}
+
+/* =====================================================================
+   PIZZA SHAPES (how a pizza is cut)
+   A pizza is a list of pieces. Each piece is a wedge (from angle a0 to a1),
+   a straight off-centre cut (chord), or the whole thing.
+   ===================================================================== */
+function wedges(fracs, start = 0) {
+  let a = start;
+  return fracs.map(f => { const p = { type: 'wedge', a0: a, a1: a + f * TAU }; a = p.a1; return p; });
+}
+const PZ = {
+  whole: () => ({ pieces: [{ type: 'full' }], eaten: [] }),
+  equal: (n, start) => ({ pieces: wedges(Array(n).fill(1 / n), start ?? (n === 2 ? pick([Math.PI / 2, 0]) : n === 4 ? pick([0, Math.PI / 4]) : Math.PI / 2)), eaten: [] }),
+  wedgy: (fr, start = Math.random() * TAU) => ({ pieces: wedges(fr, start), eaten: [] }),
+  chord: (c, rot) => ({ pieces: [{ type: 'chord', c, rot }, { type: 'chord', c: -c, rot: rot + Math.PI }], eaten: [] }),
+};
+const UNEQUAL = {
+  2: () => Math.random() < 0.65
+    ? PZ.chord(pick([0.38, 0.44, 0.5]), pick([0, Math.PI / 2, Math.PI, -Math.PI / 2, Math.PI / 4, -Math.PI / 4]))
+    : PZ.wedgy(pick([[0.72, 0.28], [0.7, 0.3]])),
+  3: () => PZ.wedgy(shuffle(pick([[0.5, 0.32, 0.18], [0.55, 0.25, 0.2], [0.47, 0.38, 0.15]]))),
+  4: () => PZ.wedgy(pick([[0.4, 0.28, 0.2, 0.12], [0.36, 0.14, 0.36, 0.14], [0.45, 0.2, 0.2, 0.15], [0.3, 0.3, 0.3, 0.1], [0.38, 0.38, 0.12, 0.12]])),
+};
+const eat = (spec, idx) => ({ ...spec, eaten: idx });
+
+/* =====================================================================
+   QUESTION MAKERS
+   kind 'pick'   → tap the right pizza (options are pizza shapes)
+   kind 'number' → tap the right number plate
+   ===================================================================== */
+function pickQ(type, L, right, wrongs, text, sub, say, hint, yay) {
+  const options = shuffle([{ spec: right, right: true }, ...shuffle(wrongs).slice(0, L.pizzas - 1).map(spec => ({ spec, right: false }))]);
+  return { type, kind: 'pick', key: type, text, sub, say, hint, yay, options };
+}
+const GEN = {
+  equal(L) {
+    const n = pick(L.cutParts);
+    const others = L.cutParts.filter(m => m !== n);
+    const wrongs = [UNEQUAL[n](), UNEQUAL[n](), others.length ? UNEQUAL[pick(others)]() : UNEQUAL[n]()];
+    return pickQ('equal', L, PZ.equal(n), wrongs,
+      'Which pizza has <em>EQUAL</em> parts?', 'Equal parts are all the same size',
+      'Which pizza is cut into equal parts? Equal parts are all the same size.',
+      'This pizza has equal parts. Tap it!', `Yes! ${n} equal parts!`);
+  },
+  half(L) {
+    const pool = L.pizzas <= 3 ? [UNEQUAL[2](), PZ.whole(), UNEQUAL[2]()] : [UNEQUAL[2](), PZ.equal(4), UNEQUAL[2](), PZ.equal(3)];
+    return pickQ('half', L, PZ.equal(2), pool,
+      'Which pizza is cut in <em>HALF</em>?', 'Half means 2 equal parts',
+      'Which pizza is cut in half? Half means 2 equal parts.',
+      'This pizza is cut in half. 2 equal parts. Tap it!', 'Yes! 2 equal halves!');
+  },
+  halfEaten(L) {
+    const st = pick([Math.PI / 2, 0]);
+    const chordEaten = (() => { const p = UNEQUAL[2](); p.pieces[0].type === 'chord' ? p.eaten = [0] : p.eaten = [p.pieces[0].a1 - p.pieces[0].a0 < Math.PI ? 0 : 1]; return p; })();
+    const wrongs = [eat(PZ.equal(2, st), []), eat(PZ.equal(4), [rnd(0, 3)]), chordEaten];
+    if (L.pizzas > 3) wrongs.push(eat(PZ.equal(4), (s => [s, (s + 1) % 4, (s + 2) % 4])(rnd(0, 3))));
+    return pickQ('halfEaten', L, eat(PZ.equal(2, st), [rnd(0, 1)]), wrongs,
+      'Tap the pizza with <em>HALF</em> eaten', 'Yum! Someone ate one half',
+      'Tap the pizza with one half eaten.',
+      'Here! One half is eaten. Tap it!', 'Yes! One half is gone!');
+  },
+  quarter(L) {
+    const pool = [UNEQUAL[4](), UNEQUAL[4](), PZ.equal(2), PZ.equal(3)];
+    return pickQ('quarter', L, PZ.equal(4), [pool[0], ...shuffle(pool.slice(1))],
+      'Which pizza has <em>4 EQUAL</em> parts?', '4 equal parts are called QUARTERS',
+      'Which pizza is cut into 4 equal parts? Each part is called a quarter.',
+      'This pizza has 4 equal parts. Tap it!', 'Yes! 4 quarters!');
+  },
+  quarterEaten(L) {
+    const s = rnd(0, 3), st = pick([0, Math.PI / 4]);
+    const wrongs = [eat(PZ.equal(4, st), [s, (s + 1) % 4]), eat(PZ.equal(4, st), [s, (s + 1) % 4, (s + 2) % 4]), eat(PZ.equal(4, st), [])];
+    return pickQ('quarterEaten', L, eat(PZ.equal(4, st), [s]), wrongs,
+      'Tap the pizza with <em>1 QUARTER</em> eaten', '1 of the 4 equal parts is gone',
+      'Tap the pizza with one quarter eaten. One of the four equal parts is gone.',
+      'Here! One quarter is eaten. Tap it!', 'Yes! One quarter is gone!');
+  },
+  share(L) {
+    let k, each, n;
+    for (let g = 0; g < 50; g++) {
+      k = pick(L.shareFriends);
+      each = rnd(1, Math.floor(L.shareMax / k)); n = each * k;
+      if (n >= L.shareMin) break;
+    }
+    const thing = pick(SHARE_THINGS);
+    return { type: 'share', kind: 'number', key: `share${n}/${k}`,
+      text: `Share ${n} ${many(thing, n)} with ${k} friends`, sub: 'Same for everyone! How many each?',
+      say: `Share ${n} ${many(thing, n)} equally between ${k} friends. How many does each friend get?`,
+      yay: `${each} each! Yum!`,
+      a: each, options: makeOptions(each, L.plates, 1, Math.max(6, each + 3), [n, each + 1, each - 1]),
+      visual: { type: 'share', n, k, thing } };
+  },
+  halfOf(L) {
+    const n = 2 * rnd(L.halfOfMax > 10 ? 3 : 1, L.halfOfMax / 2), h = n / 2, thing = pick(TOPPING_THINGS);
+    return { type: 'halfOf', kind: 'number', key: `half${n}`,
+      text: `Half of ${n} is ?`, sub: `${n} ${many(thing, n)} on the pizza. Cut it in half!`,
+      say: `There are ${n} ${many(thing, n)} on the pizza. What is half of ${n}?`,
+      yay: `Half of ${n} is ${h}!`,
+      a: h, options: makeOptions(h, L.plates, 1, Math.max(10, h + 3), [n, h + 1, h - 1, h + 2]),
+      visual: { type: 'halfOf', n, thing } };
+  },
+  howMany(L) {
+    const p = pick([2, 4]), word = p === 2 ? 'HALVES' : 'QUARTERS';
+    return { type: 'howMany', kind: 'number', key: `how${p}`,
+      text: `How many <em>${word}</em> make a whole pizza?`, sub: 'Count the pieces!',
+      say: `How many ${word.toLowerCase()} make a whole pizza? Count the pieces!`,
+      yay: `${p} ${word.toLowerCase()} make a whole!`,
+      a: p, options: makeOptions(p, L.plates, 1, 6, p === 2 ? [1, 3, 4] : [2, 3, 5]),
+      visual: { type: 'howMany', p } };
+  },
+};
+
+function makeQuestion(L, recent, lastType) {
+  for (let i = 0; i < 30; i++) {
+    let q;
+    if (MY_QUESTIONS.length) {
+      const m = pick(MY_QUESTIONS);
+      q = { type: 'mine', kind: 'number', key: m.q, text: m.q, sub: '', say: m.say || m.q, yay: '', a: m.a,
+        options: makeOptions(m.a, L.plates, 0, Math.max(10, m.a + 5)), visual: null };
+      if (!recent.includes(q.key) || i > 5) return q;
+      continue;
+    }
+    q = GEN[pick(L.types)](L);
+    if ((q.type !== lastType && !recent.includes(q.key)) || i === 29) return q;
+  }
+}
+
+/* =====================================================================
+   SOUND + VOICE
+   ===================================================================== */
+let muted = store.get('pp-muted') === '1';
+let actx = null;
+function audio() {
+  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; } }
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+function tone(freq, dur = 0.15, type = 'sine', vol = 0.16, when = 0, toFreq = 0) {
+  if (muted) return; const ac = audio(); if (!ac) return;
+  const t = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if (toFreq) o.frequency.exponentialRampToValueAtTime(toFreq, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+const sfx = {
+  pop() {
+    if (muted) return; const ac = audio(); if (!ac) return;
+    const len = Math.floor(ac.sampleRate * 0.1), buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+    const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    src.buffer = buf; f.type = 'bandpass'; f.frequency.value = 1100; g.gain.value = 0.6;
+    src.connect(f).connect(g).connect(ac.destination); src.start();
+  },
+  correct() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.2, 'triangle', 0.14, 0.05 + i * 0.08)); },
+  wrong() { tone(260, 0.22, 'sine', 0.14); tone(196, 0.3, 'sine', 0.12, 0.12); },
+  tick(n) { tone(480 + n * 40, 0.12, 'triangle', 0.14); },
+  plop(n) { tone(700 + n * 30, 0.09, 'sine', 0.16, 0, 300 + n * 15); },
+  whoosh() { tone(300, 0.35, 'triangle', 0.08, 0, 900); },
+  boing() { tone(220, 0.3, 'sine', 0.16, 0, 520); },
+  fanfare() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, 0.28, 'triangle', 0.14, i * 0.14)); },
+};
+
+let voice = null;
+const hasSpeech = 'speechSynthesis' in window;
+function pickVoice() {
+  const vs = speechSynthesis.getVoices();
+  voice = vs.find(v => v.lang === 'en-IN') || vs.find(v => v.lang === 'en-GB') || vs.find(v => /^en/.test(v.lang)) || null;
+}
+if (hasSpeech) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function say(text) {
+  if (muted || !hasSpeech || !text) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g, '').replace(/−/g, ' minus '));
+  if (voice) u.voice = voice;
+  u.lang = voice ? voice.lang : 'en-IN'; u.rate = 0.88; u.pitch = 1.1;
+  speechSynthesis.speak(u);
+}
+
+const muteBtn = $('muteBtn');
+const showMute = () => { muteBtn.textContent = muted ? '🔇' : '🔊'; };
+showMute();
+muteBtn.onclick = () => {
+  muted = !muted; store.set('pp-muted', muted ? '1' : '0'); showMute();
+  if (muted && hasSpeech) speechSynthesis.cancel();
+};
+
+/* =====================================================================
+   3D SCENE
+   ===================================================================== */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.body.prepend(renderer.domElement);
+
+function canvasTex(w, h, draw, srgb = true) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); if (srgb) t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const scene = new THREE.Scene();
+scene.background = canvasTex(4, 256, (g, w, h) => {
+  const gr = g.createLinearGradient(0, 0, 0, h);
+  gr.addColorStop(0, '#ffc46b'); gr.addColorStop(0.5, '#ffe2a8'); gr.addColorStop(1, '#fff1d6');
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+});
+const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 400);
+scene.add(new THREE.HemisphereLight(0xfff6e8, 0xd9a066, 1.55));
+const sunLight = new THREE.DirectionalLight(0xffffff, 1.8);
+sunLight.position.set(3, 8, 10);
+scene.add(sunLight);
+
+// Things lying on the table are tipped towards the camera by this much
+const TABLE_TILT = 1.12;
+
+// The picnic tablecloth (red & cream checks) and a wooden table edge
+const clothTex = canvasTex(64, 64, (g) => {
+  g.fillStyle = '#fff4e2'; g.fillRect(0, 0, 64, 64);
+  g.fillStyle = 'rgba(236, 104, 96, .45)'; g.fillRect(0, 0, 32, 64); g.fillRect(0, 0, 64, 32);
+});
+clothTex.wrapS = clothTex.wrapT = THREE.RepeatWrapping; clothTex.repeat.set(50, 30);
+clothTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+const cloth = new THREE.Mesh(new THREE.PlaneGeometry(120, 72), new THREE.MeshStandardMaterial({ map: clothTex, roughness: 1 }));
+cloth.rotation.x = TABLE_TILT - Math.PI / 2;
+scene.add(cloth);
+const tableEdge = new THREE.Mesh(new THREE.BoxGeometry(140, 0.5, 0.9), new THREE.MeshStandardMaterial({ color: 0xb5713d, roughness: 0.8 }));
+scene.add(tableEdge);
+
+// Party bunting on the wall
+const bunting = new THREE.Group();
+const flagGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-0.5, 0, 0), new THREE.Vector3(0.5, 0, 0), new THREE.Vector3(0, -0.9, 0)]);
+flagGeo.computeVertexNormals();
+for (let i = 0; i < 40; i++) {
+  const f = new THREE.Mesh(flagGeo, new THREE.MeshBasicMaterial({ color: CONFETTI[i % CONFETTI.length], side: THREE.DoubleSide }));
+  f.userData.i = i; bunting.add(f);
+}
+scene.add(bunting);
+
+// Fit the scene to any screen (wide monitor or tall phone)
+const TAN = Math.tan(THREE.MathUtils.degToRad(18));
+const view = { w: 16, h: 9, dist: 10 };
+const halfH = z => TAN * (view.dist - z);   // visible half-height at depth z
+function layout() {
+  const aspect = window.innerWidth / window.innerHeight;
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = aspect;
+  view.dist = Math.max(9 / (2 * TAN), 7 / (2 * TAN * aspect));
+  view.h = 2 * TAN * view.dist; view.w = view.h * aspect;
+  camera.position.set(0, 0, view.dist); camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix();
+
+  // tablecloth: its far edge sits just below the question card
+  const f = clamp(175 / window.innerHeight, 0.16, 0.36), zF = -12, hh = halfH(zF);
+  const yF = hh * (1 - 2 * f);
+  const up = new THREE.Vector3(0, Math.cos(cloth.rotation.x), Math.sin(cloth.rotation.x));
+  cloth.position.set(0, yF, zF).addScaledVector(up, -36);
+  tableEdge.position.set(0, yF + 0.05, zF - 0.2);
+  // bunting swoops across the top of the wall
+  const by = hh * (1 - 2 * 0.06), bw = hh * aspect * 2.1;
+  const fs = clamp(bw / 26, 0.5, 2.2), sp = fs * 1.15, count = Math.min(40, Math.floor(bw / sp));
+  bunting.position.set(0, by, zF - 0.5);
+  bunting.children.forEach(fl => {
+    const i = fl.userData.i, u = (i - (count - 1) / 2) / count;
+    fl.visible = i < count;
+    fl.position.set((i - (count - 1) / 2) * sp, -Math.cos(u * Math.PI * 6) * 0.25 * fs - 0.3, 0);
+    fl.scale.setScalar(fs);
+  });
+
+  if (game.playing && game.q) layoutRound(); else layoutMenu();
+}
+
+// Free space on screen (in 3D units) below the question card
+function zones() {
+  const card = $('qcard');
+  const px = card.classList.contains('hidden') ? window.innerHeight * 0.2 : card.getBoundingClientRect().bottom + 10;
+  return { top: view.h / 2 - (px / window.innerHeight) * view.h, bottom: -view.h / 2 + view.h * 0.035 };
+}
+
+/* ---------- text labels drawn on a canvas ---------- */
+function textSprite(text, { color = '#ffffff', stroke = '#3d2314', scale = 1, circle = null } = {}) {
+  const size = 256, c = document.createElement('canvas'); c.width = c.height = size;
+  const g = c.getContext('2d');
+  if (circle) { g.fillStyle = circle; g.beginPath(); g.arc(size / 2, size / 2, size * 0.46, 0, Math.PI * 2); g.fill(); }
+  const fs = text.length > 2 ? size * 0.42 : text.length > 1 ? size * 0.56 : size * 0.66;
+  g.font = `800 ${fs}px "Baloo 2", "Arial Rounded MT Bold", Arial, sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+  if (stroke) { g.lineWidth = size * 0.075; g.strokeStyle = stroke; g.strokeText(text, size / 2, size * 0.55); }
+  g.fillStyle = color; g.fillText(text, size / 2, size * 0.55);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+  s.scale.setScalar(scale);
+  return s;
+}
+function disposeTree(obj) {
+  obj.traverse(o => {
+    if (o.material && !o.userData.sharedMat) { o.material.map?.dispose(); o.material.dispose(); }
+    if (o.geometry && o.userData.ownGeo) o.geometry.dispose();
+  });
+}
+const shared = o => { o.userData.sharedMat = true; return o; };
+
+/* ---------- shared shapes & materials ---------- */
+const sphereGeo = new THREE.SphereGeometry(1, 28, 20);
+const shadowTex = canvasTex(64, 64, (g) => {
+  const gr = g.createRadialGradient(32, 32, 4, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(60,25,0,.45)'); gr.addColorStop(0.6, 'rgba(60,25,0,.22)'); gr.addColorStop(1, 'rgba(60,25,0,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+});
+const shadowMat = new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false });
+const shadowGeo = new THREE.CircleGeometry(1.35, 32).rotateX(-Math.PI / 2);
+const hitMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+const GREY = new THREE.Color(0xb7b0a8);
+const BASE = {
+  crust:  new THREE.MeshStandardMaterial({ color: 0xe9a25b, roughness: 0.85 }),
+  sauce:  new THREE.MeshStandardMaterial({ color: 0xd8392b, roughness: 0.6 }),
+  cheese: new THREE.MeshStandardMaterial({ color: 0xffd25e, roughness: 0.55, emissive: 0x664400, emissiveIntensity: 0.12 }),
+  board:  new THREE.MeshStandardMaterial({ color: 0x8a5a33, roughness: 0.8 }),
+  pep:    new THREE.MeshStandardMaterial({ color: 0xc1121f, roughness: 0.5 }),
+  olive:  new THREE.MeshStandardMaterial({ color: 0x2b2d42, roughness: 0.35 }),
+  pepper: new THREE.MeshStandardMaterial({ color: 0x3fa34d, roughness: 0.45 }),
+};
+const boardGeo = new THREE.CylinderGeometry(1.14, 1.1, 0.12, 56);
+const glowGeo = new THREE.RingGeometry(1.16, 1.45, 56).rotateX(-Math.PI / 2);
+const pizzaHitGeo = new THREE.CylinderGeometry(1.2, 1.2, 0.5, 20);
+const TOPPING_GEO = {
+  pep: new THREE.CylinderGeometry(0.13, 0.13, 0.04, 20),
+  olive: new THREE.TorusGeometry(0.075, 0.036, 8, 18).rotateX(-Math.PI / 2),
+  pepper: new THREE.TorusGeometry(0.085, 0.03, 6, 14, 4.3).rotateX(-Math.PI / 2),
+};
+const crumbGeo = new THREE.SphereGeometry(0.04, 8, 6);
+
+/* ---------- piece outlines ---------- */
+function regionShape(p, r) {
+  const s = new THREE.Shape();
+  if (p.type === 'full') { s.absarc(0, 0, r, 0, TAU, false); return s; }
+  if (p.type === 'wedge') {
+    s.moveTo(0, 0); s.lineTo(r * Math.cos(p.a0), r * Math.sin(p.a0)); s.absarc(0, 0, r, p.a0, p.a1, false); s.lineTo(0, 0); return s;
+  }
+  const a = Math.acos(clamp(p.c / r, -1, 1));
+  s.moveTo(r * Math.cos(-a), r * Math.sin(-a)); s.absarc(0, 0, r, -a, a, false); s.closePath(); return s;
+}
+function bandShape(p, ro, ri) {
+  const s = new THREE.Shape();
+  if (p.type === 'full') { s.absarc(0, 0, ro, 0, TAU, false); const h = new THREE.Path(); h.absarc(0, 0, ri, 0, TAU, true); s.holes.push(h); return s; }
+  let a0, a1, b0, b1;
+  if (p.type === 'wedge') { a0 = b0 = p.a0; a1 = b1 = p.a1; }
+  else { a1 = Math.acos(clamp(p.c / ro, -1, 1)); a0 = -a1; b1 = Math.acos(clamp(p.c / ri, -1, 1)); b0 = -b1; }
+  s.moveTo(ro * Math.cos(a0), ro * Math.sin(a0)); s.absarc(0, 0, ro, a0, a1, false);
+  s.lineTo(ri * Math.cos(b1), ri * Math.sin(b1)); s.absarc(0, 0, ri, b1, b0, true); s.closePath();
+  return s;
+}
+// Is point (x, y) inside piece p, at least `m` away from its cut edges?
+function inPiece(p, x, y, m = 0.1, rmin = 0.16, rmax = 0.7) {
+  const r = Math.hypot(x, y);
+  if (r > rmax) return false;
+  if (p.type === 'full') return true;
+  if (p.type === 'chord') return x > p.c + m;
+  if (r < rmin) return false;
+  const span = p.a1 - p.a0, d0 = ((Math.atan2(y, x) - p.a0) % TAU + TAU) % TAU;
+  if (d0 > span) return false;
+  const edge = d => d >= Math.PI / 2 ? r : r * Math.sin(d);
+  return Math.min(edge(d0), edge(span - d0)) > m;
+}
+const pieceSpan = p => p.type === 'full' ? TAU : p.type === 'wedge' ? p.a1 - p.a0 : 2 * Math.acos(clamp(p.c, -1, 1));
+function pieceDir(p) {
+  if (p.type === 'full') return new THREE.Vector3();
+  const m = p.type === 'wedge' ? (p.a0 + p.a1) / 2 : p.rot;
+  return new THREE.Vector3(Math.cos(m), 0, -Math.sin(m));   // shape (x, y) → local (x, 0, −y)
+}
+// Neat spots for n things inside a region (hex grid, nearest to the middle)
+function slotsIn(n, test, maxS = 0.62) {
+  for (let s = maxS; s > 0.1; s -= 0.02) {
+    const pts = [], dy = s * 0.87;
+    for (let j = -Math.ceil(1 / dy); j <= Math.ceil(1 / dy); j++)
+      for (let i = -Math.ceil(1 / s) - 1; i <= Math.ceil(1 / s) + 1; i++) {
+        const x = i * s + (Math.abs(j) % 2 ? s / 2 : 0), y = j * dy;
+        if (test(x, y)) pts.push([x, y]);
+      }
+    if (pts.length >= n) {
+      const cx = pts.reduce((a, p) => a + p[0], 0) / pts.length, cy = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+      pts.sort((a, b) => Math.hypot(a[0] - cx, a[1] - cy) - Math.hypot(b[0] - cx, b[1] - cy));
+      return { pts: pts.slice(0, n), s };
+    }
+  }
+  return { pts: Array.from({ length: n }, () => [0, 0]), s: 0.1 };
+}
+
+/* ---------- pizzas ---------- */
+function makePizza(spec, { toppings = true, gap = 0.1 } = {}) {
+  const mats = {};
+  for (const k in BASE) { mats[k] = BASE[k].clone(); mats[k].userData.base = BASE[k].color.clone(); }
+  const root = new THREE.Group(), tilt = new THREE.Group(), spin = new THREE.Group();
+  tilt.rotation.x = TABLE_TILT; root.add(tilt); tilt.add(spin); spin.userData.itemY = 0.13;
+  const shadow = shared(new THREE.Mesh(shadowGeo, shadowMat)); shadow.position.set(0, -0.2, 0.12);
+  const board = new THREE.Mesh(boardGeo, mats.board); board.position.y = -0.06;
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xfff3a0, transparent: true, opacity: 0, depthWrite: false });
+  const glow = new THREE.Mesh(glowGeo, glowMat); glow.position.y = -0.03; glow.visible = false;
+  const hit = shared(new THREE.Mesh(pizzaHitGeo, hitMat));
+  tilt.add(shadow, glow, board, hit);
+  const kinds = shuffle(['pep', 'olive', 'pepper']).slice(0, 2);
+  const pieces = [];
+  spec.pieces.forEach((p, i) => {
+    const span = pieceSpan(p), curveSegments = Math.max(5, Math.ceil(span / TAU * 56));
+    const pg = new THREE.Group(); pg.rotation.y = p.type === 'chord' ? p.rot : 0;
+    pg.userData = { dir: pieceDir(p), jump: 0, jumpDelay: 0, p, itemY: 0.13 };
+    spin.add(pg);
+    if (spec.eaten.includes(i)) {   // a few crumbs where the piece was
+      for (let c = 0; c < 6; c++) {
+        let x, y, g = 0; do { x = Math.random() * 1.6 - 0.8; y = Math.random() * 1.6 - 0.8; } while (!inPiece(p, x, y, 0.08, 0.2, 0.85) && ++g < 60);
+        if (g >= 60) continue;
+        const cr = new THREE.Mesh(crumbGeo, mats.crust); cr.position.set(x, 0.02, -y); cr.scale.set(1, 0.6, 1 + Math.random()); pg.add(cr);
+      }
+      return;
+    }
+    const mk = (shape, depth, mat, y, bevel = 0) => {
+      const geo = new THREE.ExtrudeGeometry(shape, { depth, curveSegments, bevelEnabled: bevel > 0, bevelThickness: bevel, bevelSize: bevel * 0.8, bevelSegments: 3 });
+      geo.rotateX(-Math.PI / 2);
+      const m = new THREE.Mesh(geo, mat); m.position.y = y; m.userData.ownGeo = true; pg.add(m); return m;
+    };
+    mk(regionShape(p, 0.9), 0.07, mats.sauce, 0.0);
+    mk(regionShape(p, 0.79), 0.07, mats.cheese, 0.03, 0.025);
+    mk(bandShape(p, 0.96, 0.83), 0.1, mats.crust, 0.06, 0.055);
+    if (!toppings) { pieces.push(pg); return; }
+    const count = clamp(Math.round(span / TAU * 7), 1, 6), placed = [];
+    for (let g = 0; g < 300 && placed.length < count; g++) {
+      const x = Math.random() * 1.5 - 0.75, y = Math.random() * 1.5 - 0.75;
+      if (!inPiece(p, x, y, 0.13, 0.2, 0.64) || placed.some(q => Math.hypot(q[0] - x, q[1] - y) < 0.27)) continue;
+      placed.push([x, y]);
+      const kind = kinds[placed.length % 2];
+      const t = new THREE.Mesh(TOPPING_GEO[kind], mats[kind]);
+      t.position.set(x, 0.13, -y); t.rotation.y = Math.random() * TAU;
+      pg.add(t);
+    }
+    pieces.push(pg);
+  });
+  return { root, tilt, spin, pieces, mats: Object.values(mats), glow, hit, spec,
+    gap, gapNow: gap, gapTarget: gap, spinT: 1, spinDelay: 0 };
+}
+function updatePizza(pz, dt) {
+  pz.gapNow += (pz.gapTarget - pz.gapNow) * Math.min(1, dt * 5);
+  if (pz.spinDelay > 0) pz.spinDelay -= dt;
+  else if (pz.spinT < 1) { pz.spinT = Math.min(1, pz.spinT + dt / 1.2); pz.spin.rotation.y = TAU * easeInOut(pz.spinT); }
+  for (const pg of pz.spin.children) {
+    const u = pg.userData; if (!u.dir) continue;
+    if (u.jumpDelay > 0) u.jumpDelay -= dt; else u.jump = Math.max(0, u.jump - dt * 2.2);
+    const j = Math.sin(u.jump * Math.PI);
+    pg.position.copy(u.dir).multiplyScalar(pz.gapNow + j * 0.12);
+    pg.position.y = j * 0.45;
+  }
+}
+function greyMats(mats, k) { for (const m of mats) if (m.userData.base) m.color.copy(m.userData.base).lerp(GREY, k); }
+
+/* ---------- plates, bowls, number plates ---------- */
+const plateGeo = new THREE.CylinderGeometry(1, 0.86, 0.12, 48);
+const rimGeo = new THREE.TorusGeometry(0.93, 0.06, 10, 56).rotateX(-Math.PI / 2);
+const plateMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+function makePlate(rimColor) {
+  const root = new THREE.Group(), tilt = new THREE.Group(); tilt.rotation.x = TABLE_TILT; root.add(tilt);
+  const shadow = shared(new THREE.Mesh(shadowGeo, shadowMat)); shadow.position.set(0, -0.18, 0.1); shadow.scale.setScalar(0.85);
+  const base = shared(new THREE.Mesh(plateGeo, plateMat)); base.position.y = -0.06;
+  const rim = shared(new THREE.Mesh(rimGeo, new THREE.MeshStandardMaterial({ color: rimColor, roughness: 0.4 })));
+  rim.userData.sharedMat = false;
+  const surface = new THREE.Group(); surface.position.y = 0.02;
+  tilt.add(shadow, base, rim, surface);
+  return { root, tilt, surface };
+}
+const chipGeo = new THREE.CylinderGeometry(0.5, 0.47, 0.16, 44);
+const chipFaceGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.02, 40);
+const chipGlowGeo = new THREE.RingGeometry(0.52, 0.7, 44).rotateX(-Math.PI / 2);
+function makeChip(num, color) {
+  const root = new THREE.Group(), tilt = new THREE.Group(); tilt.rotation.x = TABLE_TILT; root.add(tilt);
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.45 }); mat.userData.base = new THREE.Color(color);
+  const coin = new THREE.Mesh(chipGeo, mat); coin.position.y = -0.08;
+  const face = shared(new THREE.Mesh(chipFaceGeo, plateMat)); face.position.y = 0.01;
+  const shadow = shared(new THREE.Mesh(shadowGeo, shadowMat)); shadow.position.set(0, -0.2, 0.06); shadow.scale.setScalar(0.48);
+  const glow = new THREE.Mesh(chipGlowGeo, new THREE.MeshBasicMaterial({ color: 0xfff3a0, transparent: true, opacity: 0, depthWrite: false }));
+  glow.position.y = -0.1; glow.visible = false;
+  tilt.add(shadow, glow, coin, face);
+  const label = textSprite(String(num), { color: '#3d2314', stroke: '#ffffff', scale: 0.98 });
+  label.position.set(0, 0.03, 0.3); label.material.depthTest = false; label.renderOrder = 2;
+  root.add(label);
+  return { root, hit: coin, mats: [mat], glow, label };
+}
+
+/* ---------- toppings / things to share ---------- */
+const ITEM_GEO = {
+  olive: new THREE.TorusGeometry(0.28, 0.17, 12, 24).rotateX(-Math.PI / 2),
+  tomato: new THREE.SphereGeometry(0.42, 20, 14),
+  leaf: new THREE.ConeGeometry(0.2, 0.08, 5),
+  cap: new THREE.SphereGeometry(0.46, 20, 10, 0, TAU, 0, Math.PI / 2),
+  stem: new THREE.CylinderGeometry(0.15, 0.19, 0.3, 12),
+  gill: new THREE.CylinderGeometry(0.44, 0.4, 0.04, 20),
+};
+const ITEM_MAT = {
+  olive: new THREE.MeshStandardMaterial({ color: 0x33263a, roughness: 0.3 }),
+  tomato: new THREE.MeshStandardMaterial({ color: 0xe8333f, roughness: 0.3 }),
+  leaf: new THREE.MeshStandardMaterial({ color: 0x2d9b45, roughness: 0.6 }),
+  cap: new THREE.MeshStandardMaterial({ color: 0xa0673f, roughness: 0.7 }),
+  stem: new THREE.MeshStandardMaterial({ color: 0xf2e2c9, roughness: 0.8 }),
+  white: new THREE.MeshStandardMaterial({ color: 0xfff8ee, roughness: 0.8 }),
+};
+// a little pizza slice for sharing
+const sliceParts = (() => {
+  const p = { type: 'wedge', a0: Math.PI / 2 - 0.5, a1: Math.PI / 2 + 0.5 };
+  const mk = (shape, depth, y, bevel) => {
+    const g = new THREE.ExtrudeGeometry(shape, { depth, curveSegments: 10, bevelEnabled: bevel > 0, bevelThickness: bevel, bevelSize: bevel * 0.8, bevelSegments: 2 });
+    g.rotateX(-Math.PI / 2); g.translate(0, y, 0.62); return g;   // centre the slice
+  };
+  return [[mk(regionShape(p, 0.86), 0.12, 0, 0.03), BASE.cheese], [mk(bandShape(p, 0.98, 0.8), 0.12, 0.04, 0.06), BASE.crust]];
+})();
+function makeItem(kind) {
+  const g = new THREE.Group();
+  const add = (geo, mat, x, y, z) => { const m = shared(new THREE.Mesh(geo, mat)); m.position.set(x, y, z); g.add(m); return m; };
+  if (kind === 'olive') add(ITEM_GEO.olive, ITEM_MAT.olive, 0, 0.17, 0);
+  else if (kind === 'tomato') {
+    add(ITEM_GEO.tomato, ITEM_MAT.tomato, 0, 0.4, 0).scale.set(1, 0.9, 1);
+    add(ITEM_GEO.leaf, ITEM_MAT.leaf, 0, 0.78, 0);
+  } else if (kind === 'mushroom') {   // lying on its side so you can see the cap and the stalk
+    const m = new THREE.Group(); m.rotation.x = -Math.PI / 2; m.position.set(0, 0.22, 0.18); g.add(m);
+    const st = shared(new THREE.Mesh(ITEM_GEO.stem, ITEM_MAT.stem)); st.position.y = 0.1; st.scale.set(1.1, 1.5, 1.1);
+    const cap = shared(new THREE.Mesh(ITEM_GEO.cap, ITEM_MAT.cap)); cap.position.y = 0.3; cap.scale.set(1, 0.85, 1);
+    const gill = shared(new THREE.Mesh(ITEM_GEO.gill, ITEM_MAT.stem)); gill.position.y = 0.3;
+    m.add(st, gill, cap);
+  } else {
+    for (const [geo, mat] of sliceParts) add(geo, mat, 0, 0, 0);
+    for (const [x, z] of [[-0.12, 0.0], [0.1, -0.15], [0.0, 0.25]]) add(TOPPING_GEO.pep, BASE.pep, x, 0.2, z).scale.setScalar(0.85);
+  }
+  return g;
+}
+
+/* ---------- hungry friends ---------- */
+const FRIENDS = [
+  { type: 'bear',  color: 0xc8865a, belly: 0xf5d9bd },
+  { type: 'cat',   color: 0xffa94d, belly: 0xfff0db },
+  { type: 'bunny', color: 0xf3c4dd, belly: 0xffffff },
+  { type: 'frog',  color: 0x8fd14f, belly: 0xe3f7b5 },
+];
+const darkMat = new THREE.MeshStandardMaterial({ color: 0x2a1a12, roughness: 0.3 });
+const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+const pinkMat = new THREE.MeshStandardMaterial({ color: 0xff8fab, roughness: 0.7 });
+const mouthGeo = new THREE.TorusGeometry(0.09, 0.026, 8, 18, Math.PI);
+const earGeo = new THREE.ConeGeometry(0.17, 0.32, 14);
+function makeFriend(F) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: F.color, roughness: 0.75 });
+  const belly = new THREE.MeshStandardMaterial({ color: F.belly, roughness: 0.8 });
+  const add = (geo, m, x, y, z, sx, sy = sx, sz = sx, parent = g) => { const me = new THREE.Mesh(geo, m); me.position.set(x, y, z); me.scale.set(sx, sy, sz); parent.add(me); return me; };
+  const body = add(sphereGeo, mat, 0, 0.6, 0, 0.62, 0.6, 0.52);
+  add(sphereGeo, belly, 0, 0.45, 0.28, 0.4, 0.33, 0.25);
+  const eyeY = F.type === 'frog' ? 1.04 : 0.8, eyes = [];
+  for (const sx of [-1, 1]) {
+    if (F.type === 'frog') add(sphereGeo, mat, sx * 0.24, 1.0, 0.12, 0.2);
+    const e = new THREE.Group(); e.position.set(sx * 0.22, eyeY, F.type === 'frog' ? 0.27 : 0.4); g.add(e);
+    add(sphereGeo, whiteMat, 0, 0, 0, 0.14, 0.16, 0.08, e);
+    add(sphereGeo, darkMat, 0, -0.01, 0.07, 0.08, 0.09, 0.05, e);
+    add(sphereGeo, whiteMat, -0.03, 0.03, 0.115, 0.025, 0.025, 0.02, e);
+    eyes.push(e);
+    add(sphereGeo, pinkMat, sx * 0.37, 0.6, 0.38, 0.085, 0.06, 0.04);
+    if (F.type === 'bear') { add(sphereGeo, mat, sx * 0.4, 1.12, 0, 0.17, 0.17, 0.12); add(sphereGeo, pinkMat, sx * 0.4, 1.12, 0.08, 0.09, 0.09, 0.05); }
+    if (F.type === 'cat') { const ear = add(earGeo, mat, sx * 0.33, 1.15, 0, 1); ear.rotation.z = -sx * 0.35; }
+    if (F.type === 'bunny') { const ear = add(sphereGeo, mat, sx * 0.17, 1.38, 0, 0.11, 0.33, 0.08); ear.rotation.z = -sx * 0.12; add(sphereGeo, pinkMat, sx * 0.17, 1.38, 0.06, 0.05, 0.24, 0.03).rotation.z = -sx * 0.12; }
+  }
+  if (F.type === 'cat' || F.type === 'bear' || F.type === 'bunny') add(sphereGeo, darkMat, 0, 0.66, 0.5, 0.055, 0.04, 0.04);  // nose
+  const mouth = add(mouthGeo, darkMat, 0, F.type === 'frog' ? 0.74 : 0.6, 0.5, 1); mouth.rotation.z = Math.PI;
+  if (F.type === 'frog') mouth.scale.set(1.6, 1.2, 1);
+  const arms = [-1, 1].map(sx => add(sphereGeo, mat, sx * 0.6, 0.42, 0.18, 0.15));
+  body.userData.isFriend = true;
+  return { group: g, arms, eyes, body };
+}
+const SEAT_W = 1.45, SEAT_H_PLATE = 2.3, SEAT_H = 1.5;
+function makeSeat(F, i) {
+  const root = new THREE.Group(), inner = new THREE.Group(); root.add(inner);
+  const f = makeFriend(F); inner.add(f.group);
+  const plate = makePlate(PLATE_COLORS[i]); plate.root.position.set(0, -0.28, 0.4); plate.root.scale.setScalar(0.64);
+  inner.add(plate.root);
+  root.visible = false; scene.add(root);
+  const s = { root, inner, f, plate, home: new THREE.Vector3(), scale: 1, appear: 0, jump: 0, jumpDelay: 0,
+    phase: Math.random() * 6.28, blink: 1 + Math.random() * 3 };
+  f.body.userData.seat = s;
+  return s;
+}
+const seats = FRIENDS.map(makeSeat);
+function placeSeat(s, x, y, sc, withPlate) {
+  if (!s.root.visible) { s.root.visible = true; s.appear = 0; }
+  s.plate.root.visible = withPlate;
+  s.inner.position.y = withPlate ? -0.33 : -0.72;
+  s.home.set(x, y, 0); s.scale = sc;
+}
+const hideSeatsFrom = i => seats.slice(i).forEach(s => { s.root.visible = false; });
+function cheer(delay = 0) { seats.forEach((s, i) => { if (s.root.visible) { s.jump = 1; s.jumpDelay = delay + i * 0.09; } }); }
+
+/* ---------- confetti ---------- */
+const shardGeo = new THREE.TetrahedronGeometry(0.13);
+const confGeo = new THREE.PlaneGeometry(0.14, 0.24);
+const particles = [];
+function burst(pos, color, n, confetti = false, scale = 1) {
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(confetti ? confGeo : shardGeo,
+      new THREE.MeshBasicMaterial({ color: confetti ? pick(CONFETTI) : color, side: THREE.DoubleSide, transparent: true }));
+    m.position.copy(pos); m.position.z += 0.8; m.scale.setScalar(scale);
+    const a = Math.random() * Math.PI * 2, s = (confetti ? 3 + Math.random() * 4 : 2 + Math.random() * 3) * scale;
+    const life = confetti ? 1.7 : 0.7;
+    particles.push({ m, life, max: life, v: new THREE.Vector3(Math.cos(a) * s, Math.sin(a) * s + (confetti ? 3 : 1), (Math.random() - 0.5) * 2),
+      spin: new THREE.Vector3(Math.random() * 9, Math.random() * 9, Math.random() * 9) });
+    scene.add(m);
+  }
+}
+
+/* =====================================================================
+   ROUND OBJECTS
+   ===================================================================== */
+let opts = [];      // the answers you can tap (pizzas or number plates)
+let centre = null;  // the big thing in the middle (bowl of toppings or a pizza)
+let items = [];     // toppings that can be counted / shared
+let counted = 0;
+const IDQ = new THREE.Quaternion();
+const CENTRE_FP = { share: [2.25, 2.1], halfOf: [3.05, 2.3], howMany: [3.2, 3.0] };   // footprint per unit scale
+const PIZZA_FW = 2.45, PIZZA_FH = 2.4;
+
+function makeOpt(kind, obj, extra) {
+  scene.add(obj.root);
+  return { kind, ...obj, ...extra, home: new THREE.Vector3(), scale: 1, appear: 0, delay: 0, state: 'live',
+    shake: 0, grey: 0, hint: false, goneT: 0, phase: Math.random() * 6.28 };
+}
+
+function buildRound(q) {
+  if (q.kind === 'pick') {
+    opts = q.options.map((o, i) => {
+      const pz = makePizza(o.spec);
+      const op = makeOpt('pizza', pz, { right: o.right, pizza: pz, desc: o.spec.pieces.map(p => p.type).join('+') + (o.spec.eaten.length ? ' eaten' + o.spec.eaten.length : '') });
+      op.delay = i * 0.08; return op;
+    });
+    return;
+  }
+  const colors = shuffle([...PLATE_COLORS]);
+  opts = q.options.map((n, i) => { const op = makeOpt('chip', makeChip(n, colors[i % colors.length]), { right: n === q.a, num: n }); op.delay = 0.25 + i * 0.08; return op; });
+  const v = q.visual; if (!v) return;
+  if (v.type === 'share') {
+    const bowl = makePlate(0x74c0fc);
+    centre = { root: bowl.root, bowl, home: new THREE.Vector3(), scale: 1, appear: 0 };
+    const sl = slotsIn(v.n, (x, y) => Math.hypot(x, y) < 0.74, 0.6);
+    sl.pts.forEach(p => addItem(v.thing, bowl.surface, p, Math.min(0.5, sl.s * 0.82)));
+  } else {
+    const pz = makePizza(v.type === 'halfOf' ? PZ.equal(2, -Math.PI / 2) : PZ.equal(v.p), { toppings: v.type !== 'halfOf', gap: v.type === 'howMany' ? 0.42 : 0.05 });
+    centre = { root: pz.root, pizza: pz, home: new THREE.Vector3(), scale: 1, appear: 0 };
+    if (v.type === 'halfOf') {
+      const sl = slotsIn(v.n, (x, y) => Math.hypot(x, y) < 0.7, 0.5);
+      sl.pts.forEach(p => addItem(v.thing, pz.spin, p, Math.min(0.34, sl.s * 0.8)));
+    }
+  }
+  scene.add(centre.root);
+}
+function addItem(kind, owner, pt, sc) {
+  const mesh = makeItem(kind);
+  mesh.position.set(pt[0], owner.userData.itemY || 0, -pt[1]); mesh.scale.setScalar(sc);
+  owner.add(mesh);
+  const it = { mesh, kind, to: mesh.position.clone(), from: new THREE.Vector3(), s0: sc, s1: sc, t: 1, delay: 0, pending: null, hop: 0, counted: false, tag: null };
+  mesh.traverse(o => { o.userData.item = it; });
+  items.push(it);
+  return it;
+}
+function moveItem(it, owner, pt, sc, delay, onLand) { it.pending = { owner, pt, sc, onLand }; it.delay = delay; }
+function startMove(it) {
+  const { owner, pt, sc, onLand } = it.pending; it.pending = null;
+  if (it.tag) { it.mesh.remove(it.tag); disposeTree(it.tag); it.tag = null; }
+  owner.updateWorldMatrix(true, false); it.mesh.updateWorldMatrix(true, false);
+  owner.attach(it.mesh);
+  it.from.copy(it.mesh.position); it.s0 = it.mesh.scale.x;
+  it.to.set(pt[0], owner.userData.itemY || 0, -pt[1]); it.s1 = sc; it.t = 0; it.onLand = onLand;
+}
+
+function clearRound() {
+  game.nextIn = 0;
+  for (const o of opts) { scene.remove(o.root); disposeTree(o.root); }
+  opts = [];
+  for (const it of items) { it.mesh.parent?.remove(it.mesh); disposeTree(it.mesh); }
+  items = []; counted = 0;
+  if (centre) { scene.remove(centre.root); disposeTree(centre.root); centre = null; }
+}
+
+/* ---------- where everything goes on screen ---------- */
+function fitGrid(n, W, H, fw, fh) {
+  let best = null;
+  for (let cols = 1; cols <= n; cols++) {
+    const rows = Math.ceil(n / cols), s = Math.min(W / cols / fw, H / rows / fh);
+    if (!best || s > best.s + 1e-6) best = { cols, rows, s };
+  }
+  return best;
+}
+function layoutRound() {
+  const q = game.q; if (!q) return;
+  const z = zones(), W = view.w * 0.94, L = -W / 2, B = z.bottom, T = z.top, H = T - B;
+  const wide = W > H * 1.6;
+  if (q.kind === 'pick') {
+    let aL = L, aR = -L, aB = B;
+    if (wide) {
+      const fs = Math.min(H * 0.48 / SEAT_H, W * 0.1 / SEAT_W, 1.6);
+      placeSeat(seats[0], L + SEAT_W * fs / 2, B + SEAT_H * fs / 2 + H * 0.04, fs, false);
+      placeSeat(seats[1], -L - SEAT_W * fs / 2, B + SEAT_H * fs / 2 + H * 0.04, fs, false);
+      hideSeatsFrom(2);
+      aL = L + SEAT_W * fs + 0.1; aR = -aL;
+    } else {
+      const fs = Math.min(H * 0.15 / SEAT_H, W / 3 / (SEAT_W * 1.3), 1.4);
+      for (let i = 0; i < 3; i++) placeSeat(seats[i], (i - 1) * W / 3, B + SEAT_H * fs / 2, fs, false);
+      hideSeatsFrom(3);
+      aB = B + SEAT_H * fs + 0.1;
+    }
+    const n = opts.length, g = fitGrid(n, aR - aL, T - aB, PIZZA_FW, PIZZA_FH);
+    const s = Math.min(g.s, 2.0);
+    const cellW = Math.min((aR - aL) / g.cols, s * PIZZA_FW * 1.12), cellH = Math.min((T - aB) / g.rows, s * PIZZA_FH * 1.08);
+    const cx = (aL + aR) / 2, cy = (aB + T) / 2;
+    opts.forEach((o, i) => {
+      const r = Math.floor(i / g.cols), c = i % g.cols, inRow = Math.min(g.cols, n - r * g.cols);
+      o.home.set(cx + (c - (inRow - 1) / 2) * cellW, cy + ((g.rows - 1) / 2 - r) * cellH, 0);
+      o.scale = s;
+    });
+    return;
+  }
+  // number questions: a row of number plates at the bottom, friends and the picture above
+  const v = q.visual, isShare = v?.type === 'share';
+  const k = isShare ? v.k : 2, SH = isShare ? SEAT_H_PLATE : SEAT_H, n = opts.length;
+  const [cfw, cfh] = v ? CENTRE_FP[v.type] : [1, 1];
+  const placeChips = (y, hc, rowW) => {
+    const cs = Math.min(hc * 0.92, rowW / n / 1.3, 2.0), sp = Math.min(cs * 1.4, rowW / n);
+    opts.forEach((o, i) => { o.home.set((i - (n - 1) / 2) * sp, y, 0); o.scale = cs; });
+  };
+  const placeSeats = (x0, x1, y, h) => {
+    const rw = x1 - x0, ss = Math.min(h / SH, rw / k / 1.5, 2.1), sp = Math.min(ss * SEAT_W * 1.25, rw / k);
+    for (let i = 0; i < k; i++) placeSeat(seats[i], (x0 + x1) / 2 + (i - (k - 1) / 2) * sp, y, ss, isShare);
+    hideSeatsFrom(k);
+  };
+  if (!v) {   // your own questions: just number plates and friends
+    const hs = H * 0.3;
+    placeSeats(L, -L, B + hs / 2, hs);
+    placeChips(B + hs + (H - hs) / 2, Math.min((H - hs) * 0.6, 2.2), W);
+    return;
+  }
+  if (wide) {
+    const hc = clamp(H * 0.27, 1.0, 1.9);
+    placeChips(B + hc / 2, hc, W);
+    const b2 = B + hc + 0.2, ha = T - b2, ym = (b2 + T) / 2;
+    const split = isShare ? 0.44 : 0.58, cW = W * split;
+    centre.scale = Math.min(ha / cfh, cW / cfw, 2.3);
+    centre.home.set(L + cW / 2, ym, 0);
+    placeSeats(L + cW, -L, ym - (isShare ? 0 : ha * 0.12), isShare ? ha : ha * 0.7);
+  } else {
+    const hc = clamp(H * 0.16, 1.1, 1.9);
+    placeChips(B + hc / 2, hc, W);
+    const hs = H * (isShare ? 0.3 : 0.19), b2 = B + hc + 0.2;
+    placeSeats(L, -L, b2 + hs / 2, hs);
+    const b3 = b2 + hs + 0.15, hv = T - b3;
+    centre.scale = Math.min(hv / cfh, W / cfw, 2.3);
+    centre.home.set(0, (b3 + T) / 2, 0);
+  }
+}
+
+/* ---------- start screen decoration ---------- */
+let menuPizza = null;
+function showMenuDeco() {
+  if (!menuPizza) {
+    menuPizza = makePizza(PZ.equal(8, 0));
+    menuPizza.appear = 0; scene.add(menuPizza.root);
+  }
+  layoutMenu();
+}
+function hideMenuDeco() { if (menuPizza) { scene.remove(menuPizza.root); disposeTree(menuPizza.root); menuPizza = null; } }
+function layoutMenu() {
+  if (game.playing) return;
+  const s = Math.min(view.w / 4 / SEAT_W, view.h * 0.15 / SEAT_H);
+  seats.forEach((st, i) => placeSeat(st, (i - 1.5) * view.w / 4.2, -view.h / 2 + view.h * 0.03 + SEAT_H * s / 2, s, false));
+  if (menuPizza) {
+    menuPizza.root.position.set(0, view.h * 0.04, -3);
+    menuPizza.root.scale.setScalar(Math.min(view.w, view.h) * 0.36 / 1.14);
+  }
+}
+
+/* =====================================================================
+   GAME
+   ===================================================================== */
+const game = { playing: false, levelKey: null, L: null, qi: 0, firstTry: 0, attempts: 0, q: null, busy: false, recent: [], lastType: null, nextIn: 0 };
+
+function setCard(q) {
+  const card = $('qcard');
+  $('qtext').innerHTML = q.text;
+  $('qsub').textContent = q.sub || '';
+  $('qsub').classList.remove('hint');
+  card.classList.remove('enter'); void card.offsetWidth; card.classList.add('enter');
+}
+function updateHud(bump) {
+  $('starCount').textContent = game.firstTry;
+  $('qnum').textContent = `${Math.min(game.qi + 1, QUESTIONS_PER_ROUND)} / ${QUESTIONS_PER_ROUND}`;
+  if (bump) { const s = $('starCount'); s.classList.remove('bump'); void s.offsetWidth; s.classList.add('bump'); }
+}
+function toast(text, kind = '') {
+  const t = $('toast');
+  t.textContent = text; t.className = kind; void t.offsetWidth; t.className = `${kind} show`;
+}
+
+function startGame(key) {
+  audio();
+  hideMenuDeco();
+  shuffle(seats);
+  seats.forEach(s => { s.root.visible = false; });
+  Object.assign(game, { playing: true, levelKey: key, L: LEVELS[key], qi: 0, firstTry: 0, recent: [], lastType: null });
+  $('startScreen').classList.add('hidden'); $('endScreen').classList.add('hidden');
+  ['qcard', 'stats', 'homeBtn'].forEach(id => $(id).classList.remove('hidden'));
+  nextQuestion();
+}
+
+function nextQuestion() {
+  clearRound();
+  if (game.qi >= QUESTIONS_PER_ROUND) return endGame();
+  const q = makeQuestion(game.L, game.recent, game.lastType);
+  game.recent.push(q.key); if (game.recent.length > 4) game.recent.shift();
+  game.lastType = q.type;
+  Object.assign(game, { q, attempts: 0, busy: false });
+  setCard(q); updateHud();
+  buildRound(q);
+  layoutRound();
+  if (centre) { centre.root.position.copy(centre.home); centre.root.scale.setScalar(0.001); }
+  say(q.say);
+}
+
+function tapOption(o) {
+  if (game.busy || o.state !== 'live') return;
+  const q = game.q;
+  if (o.right) {
+    game.busy = true;
+    o.state = 'right'; o.hint = false;
+    const p = o.root.position.clone();
+    sfx.correct();
+    if (game.attempts === 0) game.firstTry++;
+    game.qi++;
+    updateHud(game.attempts === 0);
+    const msg = game.attempts === 0 ? pick(PRAISE) : 'Good! You found it!';
+    toast(msg); say(`${msg} ${q.yay || ''}`);
+    opts.forEach(x => { if (x !== o && x.state !== 'gone') { x.state = 'gone'; x.goneT = 0; } });
+    let wait = 1900;
+    if (o.kind === 'pizza') {
+      o.pizza.spinT = 0;
+      o.pizza.pieces.forEach((pg, i) => { pg.userData.jump = 1; pg.userData.jumpDelay = 0.15 + i * 0.12; });
+      burst(p, 0, 40, true, o.scale * 0.8);
+      cheer(0.1);
+    } else {
+      sfx.pop(); burst(p, o.mats[0].color.getHex(), 14, false, o.scale * 0.8); burst(p, 0, 26, true, o.scale * 0.7);
+      o.state = 'gone'; o.goneT = 0;
+      wait = celebrateVisual(q);
+    }
+    game.nextIn = wait / 1000;   // counted in animation time, so slow devices still see the whole celebration
+  } else {
+    game.attempts++;
+    o.state = 'wrong'; o.shake = 1;
+    sfx.wrong();
+    const left = opts.filter(x => x.state === 'live').length;
+    if (game.attempts === 1 && left > 1) {
+      toast('Oops! Try again 🙂', 'soft'); say('Oops! Try again.');
+    } else {
+      const right = opts.find(x => x.right);
+      if (right) right.hint = true;
+      const msg = q.kind === 'pick' ? q.hint : `The answer is ${q.a}. Tap it!`;
+      $('qsub').textContent = msg; $('qsub').classList.add('hint');
+      say(msg);
+    }
+  }
+}
+
+// After a right number answer: share the toppings, split the pizza, or put it back together
+function celebrateVisual(q) {
+  const v = q.visual;
+  if (!v) { cheer(0.2); burst(new THREE.Vector3(0, 0, 0), 0, 30, true); return 1800; }
+  if (v.type === 'share') {
+    const per = v.n / v.k, slots = seats.slice(0, v.k).map(() => slotsIn(per, (x, y) => Math.hypot(x, y) < 0.72, 0.6));
+    const step = Math.min(0.22, 2.2 / v.n);
+    let landed = 0;
+    items.forEach((it, i) => {
+      const f = i % v.k, j = Math.floor(i / v.k);
+      moveItem(it, seats[f].plate.surface, slots[f].pts[j], Math.min(0.55, slots[f].s * 0.85), 0.35 + i * step, () => { sfx.plop(++landed); });
+    });
+    const end = 0.35 + v.n * step + 0.5;
+    cheer(end);
+    setTimeout(() => { if (game.playing && game.busy) seats.slice(0, v.k).forEach(s => burst(s.plate.root.getWorldPosition(new THREE.Vector3()), 0, 14, true, s.scale * 0.6)); }, end * 1000);
+    return (end + 1.4) * 1000;
+  }
+  const pz = centre.pizza;
+  if (v.type === 'halfOf') {
+    pz.gapTarget = 0.36; sfx.whoosh();
+    const halves = [pz.pieces[1], pz.pieces[0]];   // left, right
+    const tmp = new THREE.Vector3();
+    const sorted = items.slice().sort((a, b) => a.mesh.getWorldPosition(tmp).x - b.mesh.getWorldPosition(tmp.clone()).x);
+    const h = v.n / 2;
+    const slotSets = halves.map(pg => slotsIn(h, (x, y) => inPiece(pg.userData.p, x, y, 0.13, 0.12, 0.72), 0.45));
+    let landed = 0;
+    sorted.forEach((it, i) => {
+      const side = i < h ? 0 : 1, j = side ? i - h : i;
+      moveItem(it, halves[side], slotSets[side].pts[j], Math.min(0.3, slotSets[side].s * 0.8), 0.45 + j * 0.06 + side * 0.03, () => { if (++landed % 2 === 0) sfx.plop(landed / 2); });
+    });
+    cheer(1.3);
+    return 3000;
+  }
+  // howMany: the pieces slide back into a whole pizza and spin
+  pz.gapTarget = 0.06; pz.spinT = 0; pz.spinDelay = 0.7; sfx.whoosh();
+  setTimeout(() => { if (game.playing && centre) burst(centre.root.position.clone(), 0, 40, true, centre.scale * 0.8); }, 800);
+  cheer(0.9);
+  return 2700;
+}
+
+function tapItem(it) {
+  if (it.t < 1 || it.pending || game.busy) { it.hop = 1; return; }
+  it.hop = 1;
+  if (it.counted) { sfx.tick(0); return; }
+  it.counted = true; counted++;
+  const tag = textSprite(String(counted), { color: '#3d2314', stroke: null, circle: '#ffffff', scale: 0.8 });
+  tag.position.set(0, 1.0, -0.35); tag.material.depthTest = false; tag.renderOrder = 3;
+  tag.userData.item = it; it.mesh.add(tag); it.tag = tag;
+  sfx.tick(counted); say(String(counted));
+}
+function tapFriend(s) { s.jump = 1; s.jumpDelay = 0; sfx.boing(); }
+
+function endGame() {
+  game.playing = false; game.q = null;
+  ['qcard', 'stats'].forEach(id => $(id).classList.add('hidden'));
+  const s = game.firstTry, N = QUESTIONS_PER_ROUND;
+  const stars = s >= Math.ceil(N * 0.9) ? 3 : s >= Math.ceil(N * 0.6) ? 2 : 1;
+  $('bigstars').innerHTML = [0, 1, 2].map(i => `<span class="${i < stars ? '' : 'dim'}">⭐</span>`).join('');
+  $('endmsg').textContent = `${s} out of ${N} right on the first try!`;
+  const key = `pp-best-${game.levelKey}`, best = Number(store.get(key) || 0);
+  $('newbest').classList.toggle('hidden', !(s > best));
+  if (s > best) store.set(key, String(s));
+  $('endScreen').classList.remove('hidden');
+  layoutMenu(); cheer(0.2);
+  sfx.fanfare();
+  say(`You got ${s} out of ${N}! ${stars === 3 ? 'Amazing!' : stars === 2 ? 'Great playing!' : 'Good try! Let\'s play again!'}`);
+  for (let i = 0; i < 4; i++) setTimeout(() => burst(new THREE.Vector3((Math.random() - 0.5) * view.w * 0.7, (Math.random() - 0.2) * view.h * 0.4, 0), 0, 40, true), i * 250);
+}
+
+function goHome() {
+  game.playing = false; game.q = null; clearRound();
+  if (hasSpeech) speechSynthesis.cancel();
+  ['qcard', 'stats', 'homeBtn'].forEach(id => $(id).classList.add('hidden'));
+  $('endScreen').classList.add('hidden');
+  buildLevelButtons();
+  $('startScreen').classList.remove('hidden');
+  showMenuDeco();
+}
+
+function buildLevelButtons() {
+  const box = $('levels'); box.innerHTML = '';
+  for (const [key, L] of Object.entries(LEVELS)) {
+    const best = Number(store.get(`pp-best-${key}`) || 0);
+    const st = best >= Math.ceil(QUESTIONS_PER_ROUND * 0.9) ? 3 : best >= Math.ceil(QUESTIONS_PER_ROUND * 0.6) ? 2 : best > 0 ? 1 : 0;
+    const btn = document.createElement('button');
+    btn.className = 'lvl'; btn.style.background = L.color;
+    btn.innerHTML = `<span><b>${L.emoji} ${L.name}</b><small>${L.blurb}</small></span>
+      <span class="best">${[0, 1, 2].map(i => `<span class="${i < st ? '' : 'dim'}">⭐</span>`).join('')}</span>`;
+    btn.onclick = () => startGame(key);
+    box.appendChild(btn);
+  }
+}
+
+$('homeBtn').onclick = goHome;
+$('againBtn').onclick = () => startGame(game.levelKey);
+$('levelBtn').onclick = goHome;
+$('qcard').onclick = () => game.q && say(game.q.say);
+
+/* ---------- tap / click ---------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (!game.playing) return;
+  audio();
+  ndc.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const live = opts.filter(o => o.state === 'live').map(o => o.hit);
+  const ho = ray.intersectObjects(live, false)[0];
+  if (ho) return tapOption(opts.find(o => o.hit === ho.object));
+  const hi = ray.intersectObjects(items.map(i => i.mesh), true)[0];
+  if (hi) return tapItem(hi.object.userData.item);
+  const hf = ray.intersectObjects(seats.filter(s => s.root.visible).map(s => s.f.body), false)[0];
+  if (hf) tapFriend(hf.object.userData.seat);
+});
+
+/* =====================================================================
+   ANIMATION LOOP
+   ===================================================================== */
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+  if (game.nextIn > 0) { game.nextIn -= dt; if (game.nextIn <= 0) { game.nextIn = 0; nextQuestion(); } }
+
+  bunting.children.forEach(f => { f.rotation.z = Math.sin(t * 1.5 + f.userData.i) * 0.08; });
+
+  // answer options
+  for (const o of opts) {
+    if (o.delay > 0) { o.delay -= dt; o.root.scale.setScalar(0.001); continue; }
+    o.appear = Math.min(1, o.appear + dt * 2.8);
+    o.shake = Math.max(0, o.shake - dt * 1.6);
+    let s = o.scale * easeBack(o.appear);
+    if (o.state === 'wrong') { o.grey = Math.min(1, o.grey + dt * 2.5); greyMats(o.mats, 0.6 * o.grey); s *= 1 - 0.15 * o.grey; if (o.label) o.label.material.opacity = 1 - 0.5 * o.grey; }
+    if (o.state === 'gone') { o.goneT = Math.min(1, o.goneT + dt * 3.5); s *= 1 - o.goneT; }
+    let lift = Math.sin(t * 1.6 + o.phase) * 0.04 * o.scale;
+    if (o.hint) {
+      const k = 0.5 + 0.5 * Math.sin(t * 7);
+      s *= 1 + 0.06 * k; lift += 0.12 * k * o.scale;
+      o.glow.visible = true; o.glow.material.opacity = 0.55 + 0.45 * k;
+      if (o.kind === 'chip') o.mats[0].emissive.copy(o.mats[0].color).multiplyScalar(0.4 * k);
+    }
+    o.root.position.set(o.home.x + Math.sin(t * 40) * 0.16 * o.shake * o.scale, o.home.y + lift, o.home.z);
+    o.root.scale.setScalar(Math.max(0.001, s));
+    if (o.pizza) updatePizza(o.pizza, dt);
+  }
+  // the bowl / pizza in the middle
+  if (centre) {
+    centre.appear = Math.min(1, centre.appear + dt * 2.5);
+    centre.root.position.copy(centre.home);
+    centre.root.scale.setScalar(Math.max(0.001, centre.scale * easeBack(centre.appear)));
+    if (centre.pizza) updatePizza(centre.pizza, dt);
+  }
+  if (menuPizza) { menuPizza.spin.rotation.y += dt * 0.35; }
+  // toppings: sliding to plates, hopping when counted
+  for (const it of items) {
+    if (it.pending) { it.delay -= dt; if (it.delay <= 0) startMove(it); }
+    if (it.t < 1) {
+      it.t = Math.min(1, it.t + dt / 0.5);
+      const e = easeInOut(it.t);
+      it.mesh.position.lerpVectors(it.from, it.to, e);
+      it.mesh.position.y += Math.sin(it.t * Math.PI) * 1.4;
+      it.mesh.scale.setScalar(it.s0 + (it.s1 - it.s0) * e);
+      it.mesh.quaternion.slerp(IDQ, Math.min(1, dt * 10));
+      if (it.t >= 1) { it.mesh.quaternion.identity(); it.onLand?.(); }
+    } else {
+      it.hop = Math.max(0, it.hop - dt * 3);
+      it.mesh.position.copy(it.to); it.mesh.position.y += Math.sin(it.hop * Math.PI) * 0.6;
+    }
+  }
+  // friends: pop in, bob, blink, jump for joy
+  for (const s of seats) {
+    if (!s.root.visible) continue;
+    s.appear = Math.min(1, s.appear + dt * 2.5);
+    if (s.jumpDelay > 0) s.jumpDelay -= dt; else s.jump = Math.max(0, s.jump - dt * 1.5);
+    const j = Math.sin(s.jump * Math.PI);
+    const fg = s.f.group;
+    fg.position.y = j * 0.55 + Math.max(0, Math.sin(t * 2.2 + s.phase)) * 0.04;
+    fg.scale.set(1 + 0.05 * Math.sin(t * 2.2 + s.phase), 1 - 0.04 * Math.sin(t * 2.2 + s.phase) + 0.08 * j, 1);
+    fg.rotation.z = j * 0.12 * Math.sin(t * 14);
+    s.f.arms.forEach((a, i) => { a.position.y = 0.42 + j * 0.55; a.position.x = (i ? 1 : -1) * (0.6 + j * 0.12); });
+    s.blink -= dt;
+    const closed = s.blink < 0.12 && s.blink > 0;
+    if (s.blink <= 0) s.blink = 2 + Math.random() * 3;
+    s.f.eyes.forEach(e => { e.scale.y = closed ? 0.15 : 1; });
+    s.root.position.copy(s.home);
+    s.root.scale.setScalar(Math.max(0.001, s.scale * easeBack(s.appear)));
+  }
+  // confetti pieces
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= dt;
+    if (p.life <= 0) { scene.remove(p.m); p.m.material.dispose(); particles.splice(i, 1); continue; }
+    p.v.y -= 9 * dt; p.m.position.addScaledVector(p.v, dt);
+    p.m.rotation.x += p.spin.x * dt; p.m.rotation.y += p.spin.y * dt; p.m.rotation.z += p.spin.z * dt;
+    p.m.material.opacity = Math.min(1, (p.life / p.max) * 2);
+  }
+
+  renderer.render(scene, camera);
+});
+
+window.addEventListener('resize', layout);
+document.addEventListener('visibilitychange', () => { if (document.hidden && hasSpeech) speechSynthesis.cancel(); });
+buildLevelButtons();
+showMenuDeco();
+layout();
+
+// for testing only: where to tap on screen
+const toScreen = obj => { const v = obj.getWorldPosition(new THREE.Vector3()).project(camera); return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight }; };
+window.__test = {
+  game, camera,
+  get options() { return opts; },
+  get items() { return items; },
+  targets: () => opts.map(o => ({ ...toScreen(o.hit), right: o.right, live: o.state === 'live', state: o.state, kind: o.kind, num: o.num, desc: o.desc })),
+  itemTargets: () => items.map(it => toScreen(it.mesh)),
+};
+</script>
+</body>
+</html>

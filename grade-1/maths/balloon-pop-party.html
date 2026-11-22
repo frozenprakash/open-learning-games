@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#4fb3f0">
+<title>Balloon Pop Party</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎈</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
+<!--
+  🎈 BALLOON POP PARTY — Grade 1 maths game
+  Pop the balloon with the right answer. Works with mouse (computer) and touch (phone/tablet).
+  To change the questions, scroll to "EASY-TO-EDIT SETTINGS" in the script below.
+-->
+<style>
+  :root {
+    --ink: #1d3557;
+    --card: rgba(255, 255, 255, 0.93);
+    --pink: #ff4d6d;
+    --sky: #4fb3f0;
+    --good: #2a9d8f;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--sky);
+    font-family: "Baloo 2", "Comic Sans MS", "Chalkboard SE", system-ui, sans-serif; color: var(--ink); }
+  canvas { display: block; touch-action: none; }
+
+  #topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 5; pointer-events: none;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: calc(8px + env(safe-area-inset-top)) 12px 0; }
+  .chip { pointer-events: auto; background: var(--card); color: var(--ink); border: 0; border-radius: 999px;
+    min-height: 44px; min-width: 44px; padding: 4px 14px; font: inherit; font-size: 20px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 3px 0 rgba(0,0,0,.13); }
+  button.chip { cursor: pointer; touch-action: manipulation; }
+  #stats { gap: 14px; }
+  #starCount.bump { animation: bump .5s; display: inline-block; }
+  @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.7); } 100% { transform: scale(1); } }
+
+  #qcard { position: fixed; z-index: 5; left: 50%; transform: translateX(-50%);
+    top: calc(62px + env(safe-area-inset-top)); width: min(92vw, 640px);
+    background: var(--card); border-radius: 22px; padding: 6px 16px 8px; text-align: center; cursor: pointer;
+    box-shadow: 0 5px 0 rgba(0,0,0,.13); }
+  #qcard.enter { animation: cardIn .35s ease-out; }
+  @keyframes cardIn { from { transform: translateX(-50%) scale(.85); opacity: .3; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+  #qtext { font-size: clamp(30px, 8vw, 50px); font-weight: 800; line-height: 1.15; }
+  #qsub { font-size: clamp(16px, 4.2vw, 22px); font-weight: 600; opacity: .8; min-height: 1.3em; line-height: 1.3; }
+  #qsub .again { opacity: .55; font-size: .85em; }
+
+  #toast { position: fixed; z-index: 6; left: 50%; top: 46%; transform: translate(-50%, -50%) scale(0);
+    font-size: clamp(36px, 10vw, 64px); font-weight: 800; color: #fff; white-space: nowrap; pointer-events: none;
+    text-shadow: 0 4px 0 var(--good), 0 8px 16px rgba(0,0,0,.25); }
+  #toast.soft { text-shadow: 0 4px 0 #e76f51, 0 8px 16px rgba(0,0,0,.25); }
+  #toast.show { animation: toastIn 1.2s ease-out forwards; }
+  @keyframes toastIn {
+    0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+    20% { transform: translate(-50%, -50%) scale(1.15); }
+    35% { transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; }
+    100% { transform: translate(-50%, -60%) scale(1); opacity: 0; }
+  }
+
+  .overlay { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 14px; padding: 24px 16px; text-align: center;
+    background: rgba(79, 179, 240, .35); }
+  .overlay h1 { margin: 0; font-size: clamp(42px, 12vw, 80px); line-height: 1; color: #fff;
+    text-shadow: 0 5px 0 var(--pink), 0 8px 18px rgba(0,0,0,.25); }
+  .overlay .say { margin: 0; font-size: clamp(18px, 4.8vw, 24px); font-weight: 600;
+    background: var(--card); padding: 6px 18px; border-radius: 16px; }
+  .levels { display: flex; flex-direction: column; gap: 12px; width: min(88vw, 380px); margin-top: 6px; }
+  .lvl { font: inherit; border: 0; border-radius: 22px; padding: 10px 18px; color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left;
+    box-shadow: 0 6px 0 rgba(0,0,0,.2); touch-action: manipulation; text-shadow: 0 2px 0 rgba(0,0,0,.18); }
+  .lvl:active, .big:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.2); }
+  .lvl b { font-size: 28px; display: block; line-height: 1.1; }
+  .lvl small { font-size: 15px; font-weight: 600; }
+  .lvl .best { font-size: 20px; white-space: nowrap; }
+  .dim { filter: grayscale(1); opacity: .35; }
+  .big { font: inherit; font-size: 26px; font-weight: 800; border: 0; border-radius: 20px; padding: 10px 28px;
+    color: #fff; background: var(--pink); cursor: pointer; box-shadow: 0 6px 0 rgba(0,0,0,.2); touch-action: manipulation; }
+  .big.alt { background: #fff; color: var(--ink); }
+  #bigstars { font-size: clamp(60px, 17vw, 104px); letter-spacing: 6px; line-height: 1.1; }
+  #newbest { color: #fff; font-weight: 800; font-size: 24px; text-shadow: 0 3px 0 var(--good); }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .hidden { display: none !important; }
+  @media (max-height: 500px) { /* phone turned sideways */
+    #qcard { top: calc(58px + env(safe-area-inset-top)); width: min(70vw, 560px); padding: 2px 12px 4px; }
+    #qtext { font-size: 30px; }
+    #qsub { font-size: 16px; }
+    .overlay { gap: 8px; padding: 10px; }
+    .overlay h1 { font-size: 40px; }
+    .overlay h1 br { display: none; }
+    .levels { flex-direction: row; width: min(96vw, 760px); }
+    .lvl { flex: 1; flex-direction: column; align-items: flex-start; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+} }
+</script>
+</head>
+<body>
+
+<div id="topbar">
+  <button class="chip hidden" id="homeBtn" aria-label="Home">🏠</button>
+  <div class="chip hidden" id="stats"><span>⭐ <span id="starCount">0</span></span><span id="qnum">1 / 10</span></div>
+  <button class="chip" id="muteBtn" aria-label="Sound on or off">🔊</button>
+</div>
+
+<div id="qcard" class="hidden" title="Tap to hear the question again">
+  <div id="qtext"></div>
+  <div id="qsub"></div>
+</div>
+
+<div id="toast"></div>
+
+<div class="overlay" id="startScreen">
+  <h1>🎈 Balloon<br>Pop Party</h1>
+  <p class="say">Pop the balloon with the right answer!</p>
+  <div class="levels" id="levels"></div>
+</div>
+
+<div class="overlay hidden" id="endScreen">
+  <h1>You did it!</h1>
+  <div id="bigstars"></div>
+  <p class="say" id="endmsg"></p>
+  <div id="newbest" class="hidden">🏆 New best score!</div>
+  <div class="row">
+    <button class="big" id="againBtn">Play again</button>
+    <button class="big alt" id="levelBtn">Change level</button>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* =====================================================================
+   EASY-TO-EDIT SETTINGS
+   ===================================================================== */
+const QUESTIONS_PER_ROUND = 10;
+
+// Your own questions (e.g. this week's homework). If this list has ANY
+// question in it, the game uses ONLY these questions.
+//   q   = what is written on screen
+//   a   = the right answer (a number)
+//   say = what the voice reads out (optional)
+const MY_QUESTIONS = [
+  // { q: '5 + 3 = ?', say: 'What is 5 plus 3?', a: 8 },
+  // { q: '9 − 4 = ?', say: 'What is 9 minus 4?', a: 5 },
+];
+
+// Question types: count, addPictures, subPictures, add, sub,
+// after, before, between, bigger, smaller, findNumber, skip
+// (a type listed twice comes up twice as often)
+const LEVELS = {
+  easy:   { name: 'Easy',   emoji: '🐣', color: '#5fa61d', balloons: 3, max: 20,  countMax: 10, addMax: 5,
+            blurb: 'Counting & numbers to 20',
+            types: ['count', 'count', 'addPictures', 'after', 'findNumber'] },
+  medium: { name: 'Medium', emoji: '🐯', color: '#f08c00', balloons: 4, max: 50,  countMax: 10, addMax: 10,
+            blurb: 'Adding, taking away, to 50',
+            types: ['count', 'addPictures', 'subPictures', 'after', 'before', 'between', 'bigger', 'findNumber'] },
+  hard:   { name: 'Hard',   emoji: '🦁', color: '#e63946', balloons: 4, max: 100, countMax: 10, addMax: 20,
+            blurb: 'Sums to 20, numbers to 100',
+            types: ['add', 'sub', 'after', 'before', 'between', 'bigger', 'smaller', 'findNumber', 'skip'] },
+};
+
+const PRAISE = ['Great job!', 'Super!', 'Well done!', 'Awesome!', 'You got it!', 'Fantastic!', 'Brilliant!'];
+const BALLOON_COLORS = [0xff4d6d, 0xffb703, 0x4cc9f0, 0x8ac926, 0xb5179e, 0xfb8500, 0x3a86ff];
+const FRUITS = ['apple', 'orange', 'mango'];
+
+/* =====================================================================
+   HELPERS
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch { /* private mode: ignore */ } },
+};
+const ONES = ['zero','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve',
+  'thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+const TENS = ['', '', 'twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+const words = n => n < 20 ? ONES[n] : n === 100 ? 'one hundred' : TENS[Math.floor(n / 10)] + (n % 10 ? '-' + ONES[n % 10] : '');
+const PLURAL = { apple: 'apples', orange: 'oranges', mango: 'mangoes' };
+const many = (k, n) => n === 1 ? k : PLURAL[k] || k + 's';
+const swapDigits = n => (n % 10) * 10 + Math.floor(n / 10);
+
+// Wrong answers that are close to the right one (more useful than random ones)
+function makeOptions(ans, count, lo, hi, near = []) {
+  const opts = new Set([ans]);
+  for (const c of shuffle([...near, ans - 1, ans + 1, ans - 2, ans + 2, ans + 10, ans - 10])) {
+    if (opts.size >= count) break;
+    if (c >= lo && c <= hi) opts.add(c);
+  }
+  for (let guard = 0; opts.size < count && guard < 200; guard++) opts.add(rnd(lo, hi));
+  return shuffle([...opts]);
+}
+
+function twoNumbers(max) {
+  const lo = max > 20 ? 10 : 1;
+  const x = rnd(lo, max);
+  if (x >= 12 && x % 10 && Math.floor(x / 10) !== x % 10 && swapDigits(x) <= max && Math.random() < 0.4) return [x, swapDigits(x)];
+  let y; do { y = rnd(lo, max); } while (y === x);
+  return [x, y];
+}
+
+/* =====================================================================
+   QUESTION MAKERS
+   ===================================================================== */
+const GEN = {
+  count(L) {
+    const n = rnd(1, L.countMax), k = pick(FRUITS);
+    return { text: `How many ${PLURAL[k]}?`, sub: 'Tap each one to count', say: `How many ${PLURAL[k]} are there? Tap them to count.`,
+      a: n, options: makeOptions(n, L.balloons, 1, L.countMax), visual: { groups: [{ n, kind: k }] } };
+  },
+  addPictures(L) {
+    const a = rnd(1, L.addMax - 1), b = rnd(1, L.addMax - a), k = pick(FRUITS);
+    return { text: `${a} + ${b} = ?`, sub: `How many ${PLURAL[k]} altogether?`,
+      say: `${a} ${many(k, a)}, and ${b} more. How many altogether?`,
+      a: a + b, options: makeOptions(a + b, L.balloons, 1, L.addMax), visual: { groups: [{ n: a, kind: k }, { n: b, kind: k }], op: '+' } };
+  },
+  subPictures(L) {
+    const a = rnd(3, L.addMax), b = rnd(1, a - 1), k = pick(FRUITS);
+    return { text: `${a} − ${b} = ?`, sub: `${b} got eaten! How many are left?`,
+      say: `There are ${a} ${many(k, a)}. ${b} got eaten. How many are left?`,
+      a: a - b, options: makeOptions(a - b, L.balloons, 0, L.addMax), visual: { groups: [{ n: a, kind: k, gone: b }] } };
+  },
+  add(L) {
+    const a = rnd(1, L.addMax - 1), b = rnd(1, L.addMax - a);
+    return { text: `${a} + ${b} = ?`, say: `What is ${a} plus ${b}?`, a: a + b, options: makeOptions(a + b, L.balloons, 0, L.addMax) };
+  },
+  sub(L) {
+    const a = rnd(2, L.addMax), b = rnd(1, a);
+    return { text: `${a} − ${b} = ?`, say: `What is ${a} minus ${b}?`, a: a - b, options: makeOptions(a - b, L.balloons, 0, L.addMax) };
+  },
+  after(L) {
+    const n = rnd(1, L.max - 1);
+    return { text: `${n}, ?`, sub: `What comes AFTER ${n}?`, say: `What number comes after ${n}?`,
+      a: n + 1, options: makeOptions(n + 1, L.balloons, 1, L.max, [n, n - 1]) };
+  },
+  before(L) {
+    const n = rnd(2, L.max);
+    return { text: `?, ${n}`, sub: `What comes BEFORE ${n}?`, say: `What number comes before ${n}?`,
+      a: n - 1, options: makeOptions(n - 1, L.balloons, 1, L.max, [n, n + 1]) };
+  },
+  between(L) {
+    const n = rnd(2, L.max - 1);
+    return { text: `${n - 1}, ?, ${n + 1}`, sub: 'What comes in the middle?', say: `What number comes between ${n - 1} and ${n + 1}?`,
+      a: n, options: makeOptions(n, L.balloons, 1, L.max, [n - 1, n + 1]) };
+  },
+  findNumber(L) {
+    const n = rnd(1, L.max);
+    const near = n >= 12 && n % 10 && Math.floor(n / 10) !== n % 10 ? [swapDigits(n)] : [];
+    return { text: words(n), sub: 'Pop this number!', say: `Pop the number ${n}!`,
+      a: n, options: makeOptions(n, L.balloons, 1, L.max, near) };
+  },
+  bigger(L) {
+    const [x, y] = twoNumbers(L.max);
+    return { text: 'Which is BIGGER?', sub: `${x} or ${y}`, say: `Which number is bigger? ${x}, or ${y}?`, a: Math.max(x, y), options: [x, y] };
+  },
+  smaller(L) {
+    const [x, y] = twoNumbers(L.max);
+    return { text: 'Which is SMALLER?', sub: `${x} or ${y}`, say: `Which number is smaller? ${x}, or ${y}?`, a: Math.min(x, y), options: [x, y] };
+  },
+  skip(L) {
+    const step = pick([2, 5, 10]);
+    const s = step * rnd(1, step === 10 ? 6 : 8), seq = [s, s + step, s + 2 * step], a = s + 3 * step;
+    return { text: `${seq.join(', ')}, ?`, sub: `Count in ${step}s`, say: `Count in ${step}s. ${seq.join(', ')}. What comes next?`,
+      a, options: makeOptions(a, L.balloons, 1, 100, [a + 1, a - 1, a + step]) };
+  },
+};
+
+function makeQuestion(L, recent) {
+  for (let i = 0; i < 25; i++) {
+    let q;
+    if (MY_QUESTIONS.length) {
+      const m = pick(MY_QUESTIONS);
+      q = { text: m.q, say: m.say || m.q, a: m.a, options: makeOptions(m.a, L.balloons, 0, Math.max(10, m.a + 5)) };
+    } else {
+      q = GEN[pick(L.types)](L);
+    }
+    if (!recent.includes(q.text + (q.sub || '')) || i === 24) return q;
+  }
+}
+
+/* =====================================================================
+   SOUND + VOICE
+   ===================================================================== */
+let muted = store.get('bpp-muted') === '1';
+let actx = null;
+function audio() {
+  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; } }
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+function tone(freq, dur = 0.15, type = 'sine', vol = 0.16, when = 0) {
+  if (muted) return; const ac = audio(); if (!ac) return;
+  const t = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+const sfx = {
+  pop() {
+    if (muted) return; const ac = audio(); if (!ac) return;
+    const len = Math.floor(ac.sampleRate * 0.12), buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+    const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    src.buffer = buf; f.type = 'bandpass'; f.frequency.value = 1300; g.gain.value = 0.7;
+    src.connect(f).connect(g).connect(ac.destination); src.start();
+  },
+  correct() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.2, 'triangle', 0.14, 0.05 + i * 0.08)); },
+  wrong() { tone(260, 0.22, 'sine', 0.14); tone(196, 0.3, 'sine', 0.12, 0.12); },
+  tick(n) { tone(480 + n * 45, 0.12, 'triangle', 0.14); },
+  fanfare() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, 0.28, 'triangle', 0.14, i * 0.14)); },
+};
+
+let voice = null;
+const hasSpeech = 'speechSynthesis' in window;
+function pickVoice() {
+  const vs = speechSynthesis.getVoices();
+  voice = vs.find(v => v.lang === 'en-IN') || vs.find(v => v.lang === 'en-GB') || vs.find(v => /^en/.test(v.lang)) || null;
+}
+if (hasSpeech) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function say(text) {
+  if (muted || !hasSpeech || !text) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text.replace(/−/g, ' minus '));
+  if (voice) u.voice = voice;
+  u.lang = voice ? voice.lang : 'en-IN'; u.rate = 0.88; u.pitch = 1.1;
+  speechSynthesis.speak(u);
+}
+
+const muteBtn = $('muteBtn');
+const showMute = () => { muteBtn.textContent = muted ? '🔇' : '🔊'; };
+showMute();
+muteBtn.onclick = () => {
+  muted = !muted; store.set('bpp-muted', muted ? '1' : '0'); showMute();
+  if (muted && hasSpeech) speechSynthesis.cancel();
+};
+
+/* =====================================================================
+   3D SCENE
+   ===================================================================== */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.body.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = (() => {
+  const c = document.createElement('canvas'); c.width = 4; c.height = 256;
+  const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#3fa9ec'); gr.addColorStop(0.65, '#a5dbf7'); gr.addColorStop(1, '#e3f6ff');
+  g.fillStyle = gr; g.fillRect(0, 0, 4, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 300);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x9fd37a, 1.5));
+const sunLight = new THREE.DirectionalLight(0xffffff, 1.7);
+sunLight.position.set(4, 8, 7);
+scene.add(sunLight);
+
+// Scenery: sun, hills, clouds
+const sun = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ color: 0xffe066 }));
+sun.position.z = -40; scene.add(sun);
+const hillGeo = new THREE.SphereGeometry(1, 96, 48);
+const hillBack = new THREE.Mesh(hillGeo, new THREE.MeshStandardMaterial({ color: 0x95d5b2, roughness: 1 }));
+const hillFront = new THREE.Mesh(hillGeo, new THREE.MeshStandardMaterial({ color: 0x74c69d, roughness: 1 }));
+hillBack.position.z = -14; hillFront.position.z = -8;
+scene.add(hillBack, hillFront);
+
+const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, emissive: 0xffffff, emissiveIntensity: 0.55 });
+const puffGeo = new THREE.SphereGeometry(1, 20, 14);
+const clouds = [];
+for (let i = 0; i < 6; i++) {
+  const c = new THREE.Group();
+  const n = rnd(3, 5);
+  for (let j = 0; j < n; j++) {
+    const p = new THREE.Mesh(puffGeo, cloudMat);
+    const r = 0.7 + Math.random() * 0.6;
+    p.scale.set(r * 1.2, r, r);
+    p.position.set((j - (n - 1) / 2) * 1.1, Math.sin(j / (n - 1) * Math.PI) * 0.4, 0);
+    c.add(p);
+  }
+  c.position.z = -20;
+  c.userData = { speed: 0.25 + Math.random() * 0.35, fy: 0.25 + Math.random() * 0.6, fx: Math.random() * 2 - 1 };
+  clouds.push(c); scene.add(c);
+}
+
+// Fit the scene to any screen (wide monitor or tall phone)
+const TAN = Math.tan(THREE.MathUtils.degToRad(25));
+const view = { w: 16, h: 9, dist: 10 };
+const halfH = z => TAN * (view.dist - z);   // visible half-height at depth z
+function layout() {
+  const aspect = window.innerWidth / window.innerHeight;
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = aspect;
+  view.dist = Math.max(9 / (2 * TAN), 7 / (2 * TAN * aspect));
+  view.h = 2 * TAN * view.dist; view.w = view.h * aspect;
+  camera.position.set(0, 0, view.dist); camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix();
+
+  for (const [hill, z, top, xOff] of [[hillBack, -14, 0.24, -0.3], [hillFront, -8, 0.13, 0.25]]) {
+    const hh = halfH(z), wz = hh * 2 * aspect, R = Math.max(30, wz * 1.4);
+    hill.scale.set(R, R, 1.5);
+    hill.position.set(xOff * wz, -hh + top * 2 * hh - R, z);
+  }
+  const sh = halfH(-40);
+  sun.scale.setScalar(sh * 0.12);
+  sun.position.set(sh * aspect * 0.62, sh * 0.62, -40);
+  const ch = halfH(-20);
+  clouds.forEach(c => { c.position.y = ch * c.userData.fy; if (c.userData.x0 === undefined) { c.position.x = c.userData.fx * ch * aspect; c.userData.x0 = 1; } });
+
+  placeBalloons(); placeVisual();
+}
+
+// Free space on screen (in 3D units) below the question card
+function zones() {
+  const card = $('qcard');
+  const px = card.classList.contains('hidden') ? window.innerHeight * 0.2 : card.getBoundingClientRect().bottom + 8;
+  return { top: view.h / 2 - (px / window.innerHeight) * view.h, bottom: -view.h / 2 + view.h * 0.07 };
+}
+
+/* ---------- text labels drawn on a canvas ---------- */
+function textSprite(text, { color = '#ffffff', stroke = '#1d3557', scale = 1, circle = null } = {}) {
+  const size = 256, c = document.createElement('canvas'); c.width = c.height = size;
+  const g = c.getContext('2d');
+  if (circle) { g.fillStyle = circle; g.beginPath(); g.arc(size / 2, size / 2, size * 0.46, 0, Math.PI * 2); g.fill(); }
+  const fs = text.length > 2 ? size * 0.42 : text.length > 1 ? size * 0.56 : size * 0.66;
+  g.font = `800 ${fs}px "Baloo 2", "Arial Rounded MT Bold", Arial, sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+  if (stroke) { g.lineWidth = size * 0.075; g.strokeStyle = stroke; g.strokeText(text, size / 2, size * 0.55); }
+  g.fillStyle = color; g.fillText(text, size / 2, size * 0.55);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+  s.scale.setScalar(scale);
+  return s;
+}
+function disposeTree(obj) {
+  obj.traverse(o => {
+    if (o.material && !o.userData.sharedMat) { o.material.map?.dispose(); o.material.dispose(); }
+    if (o.geometry && o.userData.ownGeo) o.geometry.dispose();
+  });
+}
+
+/* ---------- balloons ---------- */
+const balloonGeo = (() => {
+  const g = new THREE.SphereGeometry(0.7, 36, 28), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const y = p.getY(i), k = y < 0 ? 1 - 0.3 * Math.pow(-y / 0.7, 1.7) : 1;
+    p.setXYZ(i, p.getX(i) * k, y * 1.15, p.getZ(i) * k);
+  }
+  g.computeVertexNormals(); return g;
+})();
+const knotGeo = new THREE.ConeGeometry(0.1, 0.16, 12);
+const hitGeo = new THREE.SphereGeometry(0.8, 10, 8);
+const hitMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+const stringMat = new THREE.LineBasicMaterial({ color: 0x5c677d });
+const GREY = new THREE.Color(0xb0b7c3);
+
+let balloons = [];      // every balloon in the scene
+let roundBalloons = []; // the answer balloons for the current question
+
+function makeBalloon(num, color) {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshPhysicalMaterial({ color, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.12 });
+  const body = new THREE.Mesh(balloonGeo, mat);
+  const knot = new THREE.Mesh(knotGeo, mat); knot.position.y = -0.87; knot.userData.sharedMat = true;
+  const pts = [];
+  for (let i = 0; i <= 14; i++) { const t = i / 14; pts.push(new THREE.Vector3(Math.sin(t * 10) * 0.06, -0.95 - t * 1.4, 0)); }
+  const string = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), stringMat);
+  string.userData = { sharedMat: true, ownGeo: true };
+  const label = textSprite(String(num)); label.position.set(0, 0.06, 0);
+  label.material.depthTest = false; label.renderOrder = 2; // always drawn on top of its balloon, centred
+  const hit = new THREE.Mesh(hitGeo, hitMat); hit.scale.y = 1.2; hit.userData.sharedMat = true;
+  group.add(body, knot, string, label, hit);
+  const b = { group, mat, label, hit, num, color: new THREE.Color(color), state: 'rising', y: 0, vy: 0,
+    home: new THREE.Vector3(), sc: 1, phase: Math.random() * 6.28, delay: 0, shake: 0, hint: false, grey: 0 };
+  hit.userData.balloon = b;
+  balloons.push(b); scene.add(group);
+  return b;
+}
+
+function placeBalloons() {
+  const n = roundBalloons.length; if (!n) return;
+  const z = zones(), hasVis = !!visual;
+  const spacing = Math.min(2.4, (view.w * 0.9) / n);
+  const sc = Math.min(1.25, spacing / 1.65);
+  const yMid = z.bottom + (z.top - z.bottom) * (hasVis ? 0.27 : 0.42);
+  roundBalloons.forEach((b, i) => {
+    b.sc = sc;
+    b.home.set((i - (n - 1) / 2) * spacing, yMid + (n > 2 ? (i % 2 ? -0.22 : 0.22) * sc : 0), 0);
+  });
+  balloonTop = yMid + 1.15 * sc;
+}
+let balloonTop = 0;
+
+function spawnBalloons(q) {
+  const colors = shuffle([...BALLOON_COLORS]);
+  roundBalloons = q.options.map((num, i) => {
+    const b = makeBalloon(num, colors[i % colors.length]);
+    b.delay = i * 0.12;
+    return b;
+  });
+  placeBalloons();
+  roundBalloons.forEach(b => { b.y = -view.h / 2 - 2.5 - Math.random(); b.group.position.set(b.home.x, b.y, 0); b.group.scale.setScalar(b.sc); });
+}
+
+function removeBalloon(b) {
+  scene.remove(b.group); disposeTree(b.group);
+  balloons = balloons.filter(x => x !== b);
+}
+
+/* ---------- fruits for counting ---------- */
+const fruitGeo = new THREE.SphereGeometry(0.36, 24, 18);
+const stemGeo = new THREE.CylinderGeometry(0.03, 0.04, 0.2, 6);
+const leafGeo = new THREE.SphereGeometry(0.1, 10, 8);
+const FRUIT_COLOR = { apple: 0xe63946, orange: 0xff9f1c, mango: 0xffc300 };
+let visual = null, visualSpec = null, fruits = [], fruitBodies = [], counted = 0;
+
+function makeFruit(kind, gone) {
+  const g = new THREE.Group();
+  const extra = gone ? { transparent: true, opacity: 0.22, depthWrite: false } : {};
+  const body = new THREE.Mesh(fruitGeo, new THREE.MeshStandardMaterial({ color: FRUIT_COLOR[kind], roughness: kind === 'orange' ? 0.85 : 0.4, ...extra }));
+  const stem = new THREE.Mesh(stemGeo, new THREE.MeshStandardMaterial({ color: 0x6b4226, ...extra }));
+  const leaf = new THREE.Mesh(leafGeo, new THREE.MeshStandardMaterial({ color: 0x40916c, ...extra }));
+  stem.position.y = 0.38; leaf.scale.set(1.5, 0.5, 0.8); leaf.position.set(0.12, 0.42, 0); leaf.rotation.z = -0.5;
+  if (kind === 'apple') body.scale.set(1.05, 0.92, 1);
+  if (kind === 'mango') { body.scale.set(1.25, 0.88, 0.85); body.rotation.z = 0.45; stem.position.x = -0.12; leaf.position.x = 0; }
+  g.add(body, stem, leaf);
+  g.userData = { gone, counted: false, hop: 0, baseY: 0 };
+  body.userData.fruit = g;
+  return g;
+}
+
+function showVisual(spec) {
+  visualSpec = spec; counted = 0;
+  const root = new THREE.Group(), S = 0.95, GAP = 0.25, parts = [];
+  spec.groups.forEach((grp, gi) => {
+    if (gi > 0) parts.push({ obj: textSprite(spec.op || '+', { scale: 1.1 }), w: 1.0, h: 1 });
+    const g = new THREE.Group(), cols = Math.min(grp.n, 5), rows = Math.ceil(grp.n / 5);
+    for (let i = 0; i < grp.n; i++) {
+      const f = makeFruit(grp.kind, grp.gone && i >= grp.n - grp.gone);
+      f.position.set((i % 5 - (cols - 1) / 2) * S, ((rows - 1) / 2 - Math.floor(i / 5)) * S, 0);
+      f.userData.baseY = f.position.y;
+      g.add(f); fruits.push(f);
+      if (!f.userData.gone) fruitBodies.push(f.children[0]);
+    }
+    parts.push({ obj: g, w: cols * S, h: rows * S });
+  });
+  const total = parts.reduce((s, p) => s + p.w, 0) + GAP * (parts.length - 1);
+  let x = -total / 2;
+  for (const p of parts) { p.obj.position.x = x + p.w / 2; root.add(p.obj); x += p.w + GAP; }
+  root.userData = { w: total, h: Math.max(...parts.map(p => p.h)), appear: 0, fit: 1 };
+  visual = root; scene.add(root);
+  placeVisual();
+}
+function placeVisual() {
+  if (!visual) return;
+  const z = zones(), lo = balloonTop + 0.3, hi = z.top - 0.15;
+  const fit = Math.min(1.35, (view.w * 0.92) / visual.userData.w, Math.max(0.3, (hi - lo) / (visual.userData.h + 0.3)));
+  visual.userData.fit = fit;
+  visual.position.set(0, (lo + hi) / 2, 0.5);
+}
+function clearVisual() {
+  if (visual) { scene.remove(visual); disposeTree(visual); }
+  visual = null; visualSpec = null; fruits = []; fruitBodies = [];
+}
+
+/* ---------- pop pieces & confetti ---------- */
+const shardGeo = new THREE.TetrahedronGeometry(0.13);
+const confGeo = new THREE.PlaneGeometry(0.14, 0.24);
+const particles = [];
+function burst(pos, color, n, confetti = false, scale = 1) {
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(confetti ? confGeo : shardGeo,
+      new THREE.MeshBasicMaterial({ color: confetti ? pick(BALLOON_COLORS) : color, side: THREE.DoubleSide, transparent: true }));
+    m.position.copy(pos); m.scale.setScalar(scale);
+    const a = Math.random() * Math.PI * 2, s = (confetti ? 3 + Math.random() * 4 : 2 + Math.random() * 3) * scale;
+    const life = confetti ? 1.7 : 0.7;
+    particles.push({ m, life, max: life, v: new THREE.Vector3(Math.cos(a) * s, Math.sin(a) * s + (confetti ? 3 : 1), (Math.random() - 0.5) * 2),
+      spin: new THREE.Vector3(Math.random() * 9, Math.random() * 9, Math.random() * 9) });
+    scene.add(m);
+  }
+}
+
+/* =====================================================================
+   GAME
+   ===================================================================== */
+const game = { playing: false, levelKey: null, L: null, qi: 0, firstTry: 0, attempts: 0, q: null, busy: false, recent: [] };
+let nextTimer = null;
+
+function setCard(q) {
+  const card = $('qcard');
+  $('qtext').textContent = q.text;
+  $('qsub').textContent = q.sub || '';
+  card.classList.remove('enter'); void card.offsetWidth; card.classList.add('enter');
+}
+function updateHud(bump) {
+  $('starCount').textContent = game.firstTry;
+  $('qnum').textContent = `${Math.min(game.qi + 1, QUESTIONS_PER_ROUND)} / ${QUESTIONS_PER_ROUND}`;
+  if (bump) { const s = $('starCount'); s.classList.remove('bump'); void s.offsetWidth; s.classList.add('bump'); }
+}
+function toast(text, kind = '') {
+  const t = $('toast');
+  t.textContent = text; t.className = kind; void t.offsetWidth; t.className = `${kind} show`;
+}
+
+function flyAway(b) { if (b.state !== 'away' && b.state !== 'popped') { b.state = 'away'; b.vy = Math.max(b.vy, 3); } }
+
+function clearRound() {
+  clearTimeout(nextTimer);
+  roundBalloons.forEach(flyAway);
+  roundBalloons = [];
+  clearVisual();
+}
+
+function startGame(key) {
+  audio();
+  balloons.filter(b => b.state === 'deco').forEach(removeBalloon); // clear the menu's floating balloons
+  Object.assign(game, { playing: true, levelKey: key, L: LEVELS[key], qi: 0, firstTry: 0, recent: [] });
+  $('startScreen').classList.add('hidden'); $('endScreen').classList.add('hidden');
+  ['qcard', 'stats', 'homeBtn'].forEach(id => $(id).classList.remove('hidden'));
+  nextQuestion();
+}
+
+function nextQuestion() {
+  clearRound();
+  if (game.qi >= QUESTIONS_PER_ROUND) return endGame();
+  const q = makeQuestion(game.L, game.recent);
+  game.recent.push(q.text + (q.sub || '')); if (game.recent.length > 5) game.recent.shift();
+  Object.assign(game, { q, attempts: 0, busy: false });
+  setCard(q); updateHud();
+  spawnBalloons(q);
+  if (q.visual) { showVisual(q.visual); placeBalloons(); placeVisual(); }
+  say(q.say);
+}
+
+function tapBalloon(b) {
+  if (game.busy) return;
+  const q = game.q;
+  if (b.num === q.a) {
+    game.busy = true;
+    const p = b.group.position.clone();
+    b.state = 'popped'; removeBalloon(b);
+    burst(p, b.color, 16, false, b.sc); burst(p, 0, 34, true, b.sc);
+    sfx.pop(); sfx.correct();
+    if (game.attempts === 0) game.firstTry++;
+    game.qi++;
+    updateHud(game.attempts === 0);
+    const msg = game.attempts === 0 ? pick(PRAISE) : 'Good! You found it!';
+    toast(msg); say(msg);
+    roundBalloons.forEach(o => { if (o !== b) flyAway(o); });
+    nextTimer = setTimeout(nextQuestion, 1500);
+  } else {
+    game.attempts++;
+    b.state = 'deflated'; b.shake = 1;
+    sfx.wrong();
+    const left = roundBalloons.filter(o => o.state === 'idle' || o.state === 'rising').length;
+    if (game.attempts === 1 && left > 1) {
+      toast('Oops! Try again 🙂', 'soft'); say('Oops! Try again.');
+    } else {
+      const right = roundBalloons.find(o => o.num === q.a);
+      if (right) right.hint = true;
+      $('qsub').textContent = `The answer is ${q.a}. Pop it!`;
+      say(`The answer is ${q.a}. Pop it!`);
+    }
+  }
+}
+
+function tapFruit(f) {
+  const d = f.userData;
+  d.hop = 1;
+  if (d.counted) { sfx.tick(0); return; }
+  d.counted = true; counted++;
+  const tag = textSprite(String(counted), { color: '#1d3557', stroke: null, circle: '#ffffff', scale: 0.5 });
+  tag.position.set(0, 0.72, 0.2); f.add(tag);
+  sfx.tick(counted); say(String(counted));
+}
+
+function endGame() {
+  game.playing = false;
+  ['qcard', 'stats'].forEach(id => $(id).classList.add('hidden'));
+  const s = game.firstTry, N = QUESTIONS_PER_ROUND;
+  const stars = s >= Math.ceil(N * 0.9) ? 3 : s >= Math.ceil(N * 0.6) ? 2 : 1;
+  $('bigstars').innerHTML = [0, 1, 2].map(i => `<span class="${i < stars ? '' : 'dim'}">⭐</span>`).join('');
+  $('endmsg').textContent = `${s} out of ${N} right on the first try!`;
+  const key = `bpp-best-${game.levelKey}`, best = Number(store.get(key) || 0);
+  $('newbest').classList.toggle('hidden', !(s > best));
+  if (s > best) store.set(key, String(s));
+  $('endScreen').classList.remove('hidden');
+  sfx.fanfare();
+  say(`You got ${s} out of ${N}! ${stars === 3 ? 'Amazing!' : stars === 2 ? 'Great playing!' : 'Good try! Let\'s play again!'}`);
+  for (let i = 0; i < 4; i++) setTimeout(() => burst(new THREE.Vector3((Math.random() - 0.5) * view.w * 0.7, (Math.random() - 0.2) * view.h * 0.4, 0), 0, 40, true), i * 250);
+}
+
+function goHome() {
+  game.playing = false; clearRound();
+  if (hasSpeech) speechSynthesis.cancel();
+  ['qcard', 'stats', 'homeBtn'].forEach(id => $(id).classList.add('hidden'));
+  $('endScreen').classList.add('hidden');
+  buildLevelButtons();
+  $('startScreen').classList.remove('hidden');
+}
+
+function buildLevelButtons() {
+  const box = $('levels'); box.innerHTML = '';
+  for (const [key, L] of Object.entries(LEVELS)) {
+    const best = Number(store.get(`bpp-best-${key}`) || 0);
+    const st = best >= Math.ceil(QUESTIONS_PER_ROUND * 0.9) ? 3 : best >= Math.ceil(QUESTIONS_PER_ROUND * 0.6) ? 2 : best > 0 ? 1 : 0;
+    const btn = document.createElement('button');
+    btn.className = 'lvl'; btn.style.background = L.color;
+    btn.innerHTML = `<span><b>${L.emoji} ${L.name}</b><small>${L.blurb}</small></span>
+      <span class="best">${[0, 1, 2].map(i => `<span class="${i < st ? '' : 'dim'}">⭐</span>`).join('')}</span>`;
+    btn.onclick = () => startGame(key);
+    box.appendChild(btn);
+  }
+}
+
+$('homeBtn').onclick = goHome;
+$('againBtn').onclick = () => startGame(game.levelKey);
+$('levelBtn').onclick = goHome;
+$('qcard').onclick = () => game.q && say(game.q.say);
+
+/* ---------- tap / click ---------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (!game.playing) return;
+  audio();
+  ndc.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const live = roundBalloons.filter(b => b.state === 'idle' || b.state === 'rising').map(b => b.hit);
+  const hb = ray.intersectObjects(live, false)[0];
+  if (hb) return tapBalloon(hb.object.userData.balloon);
+  const hf = ray.intersectObjects(fruitBodies, false)[0];
+  if (hf) tapFruit(hf.object.userData.fruit);
+});
+
+/* =====================================================================
+   ANIMATION LOOP
+   ===================================================================== */
+const clock = new THREE.Clock();
+let decoTimer = 0;
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+
+  // clouds drift
+  const cw = halfH(-20) * camera.aspect + 4;
+  for (const c of clouds) { c.position.x += c.userData.speed * dt; if (c.position.x > cw) c.position.x = -cw; }
+
+  // decorative balloons on the menu screens
+  if (!game.playing) {
+    decoTimer -= dt;
+    if (decoTimer <= 0 && balloons.length < 9) {
+      decoTimer = 0.9;
+      const b = makeBalloon(rnd(1, 9), pick(BALLOON_COLORS));
+      b.state = 'deco'; b.sc = 0.8 + Math.random() * 0.5;
+      b.home.x = (Math.random() - 0.5) * view.w * 0.95; b.y = -view.h / 2 - 2.5; b.vy = 0.9 + Math.random() * 0.8;
+      b.group.scale.setScalar(b.sc);
+    }
+  }
+
+  for (const b of [...balloons]) {
+    const g = b.group;
+    if (b.state === 'rising' || b.state === 'idle' || b.state === 'deflated') {
+      if (b.delay > 0) { b.delay -= dt; continue; }
+      b.y += (b.home.y - b.y) * Math.min(1, dt * 3.2);
+      if (b.state === 'rising' && Math.abs(b.y - b.home.y) < 0.05) b.state = 'idle';
+    } else if (b.state === 'away' || b.state === 'deco') {
+      b.vy += (b.state === 'away' ? 16 : 0) * dt; b.y += b.vy * dt;
+      if (b.y > view.h / 2 + 3) { removeBalloon(b); continue; }
+    }
+    // bobbing + sway
+    b.shake = Math.max(0, b.shake - dt * 1.6);
+    g.position.set(b.home.x + Math.sin(t * 0.9 + b.phase) * 0.08 + Math.sin(t * 40) * 0.18 * b.shake,
+                   b.y + Math.sin(t * 1.6 + b.phase) * 0.12 * b.sc, 0);
+    g.rotation.z = Math.sin(t * 1.1 + b.phase) * 0.07;
+    let s = b.sc;
+    if (b.state === 'deflated') {
+      b.grey = Math.min(1, b.grey + dt * 2.5);
+      s *= 1 - 0.3 * b.grey;
+      b.mat.color.copy(b.color).lerp(GREY, b.grey);
+      b.label.material.opacity = 1 - 0.5 * b.grey;
+    }
+    if (b.hint) {
+      const k = 0.5 + 0.5 * Math.sin(t * 8);
+      b.mat.emissive.copy(b.color).multiplyScalar(0.45 * k);
+      s *= 1 + 0.08 * k;
+    }
+    g.scale.setScalar(s);
+  }
+
+  // fruits: pop in, then hop when tapped
+  if (visual) {
+    const u = visual.userData;
+    u.appear = Math.min(1, u.appear + dt * 2.5);
+    const e = 1 + 2.7 * Math.pow(u.appear - 1, 3) + 1.7 * Math.pow(u.appear - 1, 2); // ease-out-back
+    visual.scale.setScalar(u.fit * e);
+    for (const f of fruits) {
+      const d = f.userData;
+      d.hop = Math.max(0, d.hop - dt * 3);
+      f.position.y = d.baseY + Math.sin(d.hop * Math.PI) * 0.35 + Math.sin(t * 2 + f.position.x) * 0.03;
+    }
+  }
+
+  // pieces
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= dt;
+    if (p.life <= 0) { scene.remove(p.m); p.m.material.dispose(); particles.splice(i, 1); continue; }
+    p.v.y -= 9 * dt; p.m.position.addScaledVector(p.v, dt);
+    p.m.rotation.x += p.spin.x * dt; p.m.rotation.y += p.spin.y * dt; p.m.rotation.z += p.spin.z * dt;
+    p.m.material.opacity = Math.min(1, (p.life / p.max) * 2);
+  }
+
+  renderer.render(scene, camera);
+});
+
+window.addEventListener('resize', layout);
+document.addEventListener('visibilitychange', () => { if (document.hidden && hasSpeech) speechSynthesis.cancel(); });
+buildLevelButtons();
+layout();
+window.__bpp = { game, camera, get balloons() { return roundBalloons; }, get fruits() { return fruitBodies; } }; // for testing only
+</script>
+</body>
+</html>
