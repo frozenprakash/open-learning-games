@@ -12,12 +12,13 @@ Thanks for helping! Games for new grades, new subjects and better versions of ex
    - Keep words on screen short and simple.
    - Meet a wrong answer with a kind hint, never a buzzer or a "game over".
    - Rounds are short: about 10 questions.
-5. **Levels and settings.** Offer Easy, Medium and Hard where it fits. Put the settings (questions per round, word lists, number ranges) in a clearly marked block at the top of the script.
-6. **Private and safe.**
+5. **Easy to get back.** The start and end screens have an "⬅ All games" link to `../`, and during play a 🏠 button returns to the start screen.
+6. **Levels and settings.** Offer Easy, Medium and Hard where it fits. Put the settings (questions per round, word lists, number ranges) in a clearly marked block at the top of the script.
+7. **Private and safe.**
    - No ads, analytics, trackers or accounts.
    - No names, photos or other details of real children.
    - Save progress only in `localStorage`, under a short prefix that's unique to the game.
-7. **Follow the syllabus.** Topics should match the grade (CBSE / NCERT, or say which syllabus in the game's header comment).
+8. **Follow the syllabus.** Topics should match the grade (CBSE / NCERT, or say which syllabus in the game's header comment).
 
 ## Adding a game
 

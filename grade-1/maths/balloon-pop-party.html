@@ -27,7 +27,7 @@
     font-family: "Baloo 2", "Comic Sans MS", "Chalkboard SE", system-ui, sans-serif; color: var(--ink); }
   canvas { display: block; touch-action: none; }
 
-  #topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 5; pointer-events: none;
+  #topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 20; pointer-events: none;
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
     padding: calc(8px + env(safe-area-inset-top)) 12px 0; }
   .chip { pointer-events: auto; background: var(--card); color: var(--ink); border: 0; border-radius: 999px;
@@ -83,6 +83,8 @@
   #bigstars { font-size: clamp(60px, 17vw, 104px); letter-spacing: 6px; line-height: 1.1; }
   #newbest { color: #fff; font-weight: 800; font-size: 24px; text-shadow: 0 3px 0 var(--good); }
   .row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  #gamesBtn { text-decoration: none; font-weight: 800; }
+  #homeBtn:not(.hidden) ~ #gamesBtn { display: none; }
   .hidden { display: none !important; }
   @media (max-height: 500px) { /* phone turned sideways */
     #qcard { top: calc(58px + env(safe-area-inset-top)); width: min(70vw, 560px); padding: 2px 12px 4px; }
@@ -105,6 +107,7 @@
 
 <div id="topbar">
   <button class="chip hidden" id="homeBtn" aria-label="Home">🏠</button>
+  <a class="chip" id="gamesBtn" href="../" aria-label="All games">⬅ All games</a>
   <div class="chip hidden" id="stats"><span>⭐ <span id="starCount">0</span></span><span id="qnum">1 / 10</span></div>
   <button class="chip" id="muteBtn" aria-label="Sound on or off">🔊</button>
 </div>
