@@ -30,7 +30,7 @@ Grade 1 is ready. Topics follow the CBSE / NCERT syllabus, so most of it suits a
 
 ### Word Lanterns and the microphone
 
-Word Lanterns uses the browser's speech recognition (Chrome on Android, Windows and Mac). The page must be opened from its `https://` link: browsers block the microphone for files opened from a phone's storage or from Google Drive. If the mic is not available or mishears, a grown-up can tap 👍.
+Word Lanterns uses the browser's speech recognition (Chrome on Android, Windows and Mac). The page must be opened from its `https://` link: browsers block the microphone for files opened from a phone's storage or from Google Drive. If the mic is not available or mishears, a grown-up can tap 👍. The game sorts all the words by length into Easy, Medium and Hard.
 
 To make your own word lists, edit [`grade-1/english/word-lanterns-words.txt`](grade-1/english/word-lanterns-words.txt) and run:
 

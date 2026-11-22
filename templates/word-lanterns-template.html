@@ -39,7 +39,15 @@
   #controls{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;align-items:flex-end;gap:14px;padding:10px 12px;padding-bottom:max(14px,env(safe-area-inset-bottom));z-index:5}
   .ctl{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:13px;color:var(--dim);font-weight:600;background:none;width:72px}
   .ctl .ic{width:58px;height:58px;border-radius:50%;background:var(--panel);border:1px solid var(--line);font-size:26px;display:grid;place-items:center}
-  #mic{width:96px}
+  #mic{width:96px;position:relative}
+  #mic.nudge .ic{animation:bounce .7s infinite;border-color:#fff3a0;box-shadow:0 0 0 6px rgba(255,220,90,.55),0 6px 24px rgba(255,120,40,.45)}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+  #tapMe{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:12px;background:#ffe066;color:#3a2400;font-weight:800;font-size:18px;padding:6px 14px;border-radius:16px;white-space:nowrap;display:none;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+  #tapMe::after{content:"";position:absolute;top:100%;left:50%;margin-left:-8px;border:8px solid transparent;border-top-color:#ffe066}
+  #mic.nudge #tapMe{display:block}
+  #mark{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%) scale(.3);font-size:min(24vw,120px);line-height:1;opacity:0;pointer-events:none;z-index:6;transition:opacity .15s,transform .25s cubic-bezier(.3,1.6,.5,1);filter:drop-shadow(0 6px 18px rgba(0,0,0,.5))}
+  #mark.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  #msg.wrong{color:#ff8a8a}
   #mic .ic{width:88px;height:88px;font-size:40px;background:linear-gradient(#ff9f43,#ff6b2b);border:3px solid #ffd59a;box-shadow:0 6px 24px rgba(255,120,40,.45);position:relative}
   #mic.on .ic{background:linear-gradient(#43d17a,#1fa85a);border-color:#b8f5cf;box-shadow:0 0 0 0 rgba(67,209,122,.7);animation:pulse 1.4s infinite}
   #mic.off .ic{filter:grayscale(1);opacity:.5}
@@ -52,7 +60,9 @@
   .card h1{margin:0;font-size:clamp(34px,8vw,50px);line-height:1.05;color:var(--gold)}
   .card p{margin:8px 0 14px;color:var(--dim);font-size:17px;line-height:1.35}
   .lists{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:10px 0}
-  .lists button{background:#1b2f66;border:2px solid #34508f;border-radius:18px;padding:12px 14px;text-align:left;font-size:19px;font-weight:800;line-height:1.15}
+  .lists{grid-template-columns:1fr !important;max-width:420px;margin-left:auto;margin-right:auto}
+  .lists button{display:flex;align-items:center;gap:14px;background:#1b2f66;border:2px solid #34508f;border-radius:20px;padding:12px 16px;text-align:left;font-size:26px;font-weight:800;line-height:1.1}
+  .lists button .lv{font-size:44px;line-height:1}
   .lists button small{display:block;font-size:14px;font-weight:600;color:var(--dim);margin-top:3px}
   .lists button.special{background:#3a2a12;border-color:#8a6420}
   .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px}
@@ -69,6 +79,8 @@
     #mic{font-size:11px}#mic .ic{width:66px;height:66px;font-size:30px}
     #msg{bottom:auto;top:62px}
     #heard{bottom:10px}
+    #tapMe{bottom:auto;top:50%;left:100%;transform:translateY(-50%);margin:0 0 0 12px}
+    #tapMe::after{top:50%;left:auto;right:100%;margin:-8px 0 0 0;border-top-color:transparent;border-right-color:#ffe066}
   }
 </style>
 </head>
@@ -84,10 +96,11 @@
 
 <div id="heard"></div>
 <div id="msg"></div>
+<div id="mark">❌</div>
 
 <div id="controls">
   <button class="ctl" id="hear"><span class="ic">🔈</span>Hear it</button>
-  <button class="ctl" id="mic"><span class="ic">🎤</span><span id="micLabel">Tap, then read</span></button>
+  <button class="ctl" id="mic"><span class="ic">🎤</span><span id="micLabel">Tap, then read</span><span id="tapMe">Tap me first! 🎤</span></button>
   <button class="ctl" id="okBtn"><span class="ic">👍</span>Grown-up: right</button>
   <button class="ctl" id="skipBtn"><span class="ic">⏭</span>Skip</button>
 </div>
@@ -95,9 +108,8 @@
 <div class="overlay show" id="menu">
   <div class="card">
     <h1>🏮 Word Lanterns</h1>
-    <p>Read the word out loud.<br>Read it right and the lantern lights up!</p>
+    <p>Pick a level, tap 🎤 and read the word.<br>Read it right and the lantern lights up!</p>
     <div class="lists" id="lists"></div>
-    <div class="row"><button class="pill" id="caseBtn"></button></div>
     <div id="note"></div>
   </div>
 </div>
@@ -146,6 +158,12 @@ const SOUNDS_LIKE = {
   place:['plays','plaice'], match:['much','mach'], share:['shair','sher'], other:['udder'], first:['fast','fist'],
   under:['onder'], every:['evry'], about:['abaut'], again:['a gain'], answer:['ansar'], listen:['lesson','lissen']
 };
+// Levels: all words are sorted by length and split into three equal groups.
+const LEVELS = [
+  { name: 'Easy',   icon: '🐣', about: 'short words' },
+  { name: 'Medium', icon: '🐯', about: 'a bit longer' },
+  { name: 'Hard',   icon: '🦁', about: 'long words' }
+];
 const SAY_AS = { ok:'okay', ma:'maa', us:'us', ah:'aah', oh:'oh', ox:'ox' };   // how "Hear it" says a word
 
 /* ================= little helpers ================= */
@@ -174,7 +192,8 @@ function tone(f, dur = .15, type = 'sine', vol = .18, when = 0){
 const sfx = {
   tap(){ tone(660, .08, 'triangle', .12); },
   lit(){ [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, .35, 'triangle', .16, i * .07)); },
-  miss(){ tone(330, .14, 'sine', .14); tone(262, .2, 'sine', .12, .12); },
+  miss(){ tone(392, .16, 'square', .07); tone(311, .16, 'square', .07, .16); tone(247, .32, 'triangle', .2, .32); },
+  attention(){ tone(880, .18, 'sine', .16); tone(1175, .3, 'sine', .16, .18); },
   end(){ [392, 523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, .3, 'triangle', .17, i * .12)); }
 };
 let voice = null;
@@ -225,7 +244,7 @@ const glowTex = radialTex('rgba(255,220,150,1)', 'rgba(255,140,40,.45)');
 const sparkTex = radialTex('rgba(255,255,230,1)', 'rgba(255,210,90,.6)');
 
 // lantern
-const DIM = new THREE.Color('#34456e'), LIT = new THREE.Color('#ffb347'), EMIT = new THREE.Color('#ff7a1a');
+const RED = new THREE.Color('#ff2a2a'), DIM = new THREE.Color('#34456e'), LIT = new THREE.Color('#ffb347'), EMIT = new THREE.Color('#ff7a1a');
 const lanternProfile = []; for(let i = 0; i <= 20; i++){ const a = i / 20; lanternProfile.push(new THREE.Vector2(.28 + .74 * Math.pow(Math.sin(Math.PI * a), .75), (a - .5) * 1.5)); }
 const bodyGeo = new THREE.LatheGeometry(lanternProfile, 36);
 const capGeo = new THREE.CylinderGeometry(.34, .34, .16, 28);
@@ -252,6 +271,7 @@ function updateLantern(l, dt, t){
   u.lit += (u.target - u.lit) * Math.min(1, dt * 4);
   u.mat.color.copy(DIM).lerp(LIT, u.lit);
   u.mat.emissive.copy(EMIT).multiplyScalar(u.lit * (.85 + .15 * Math.sin(t * 6 + u.phase)));
+  if(u.flash > 0){ u.flash = Math.max(0, u.flash - dt * 1.4); u.mat.emissive.lerp(RED, Math.min(1, u.flash * 1.5)); }
   u.glow.material.opacity = u.lit * .95;
   u.glow.scale.setScalar(.01 + u.lit * 4.2);
 }
@@ -405,7 +425,9 @@ const game = { state: 'menu', list: null, listKey: '', round: [], idx: 0, stars:
 let main = null, lockUntil = 0;
 const msgEl = $('#msg'), heardEl = $('#heard');
 let msgTimer = 0, heardTimer = 0;
-function showMsg(t, soft){ msgEl.textContent = t; msgEl.classList.toggle('soft', !!soft); msgEl.classList.add('show'); clearTimeout(msgTimer); msgTimer = setTimeout(() => msgEl.classList.remove('show'), 1300); }
+let markTimer = 0;
+function showMark(ch){ const m = $('#mark'); m.textContent = ch; if(main){ const v = main.position.clone().add(new THREE.Vector3(0, .95 * mainScale, .5)).project(camera); m.style.left = ((v.x + 1) / 2 * innerWidth) + 'px'; m.style.top = ((1 - v.y) / 2 * innerHeight) + 'px'; } m.classList.add('show'); clearTimeout(markTimer); markTimer = setTimeout(() => m.classList.remove('show'), 900); }
+function showMsg(t, soft, wrong){ msgEl.textContent = t; msgEl.classList.toggle('soft', !!soft); msgEl.classList.toggle('wrong', !!wrong); msgEl.classList.add('show'); clearTimeout(msgTimer); msgTimer = setTimeout(() => msgEl.classList.remove('show'), 1300); }
 function showHeard(text, partial){
   if(!text){ return; }
   heardEl.innerHTML = '🎤 I heard: <b></b>'; heardEl.querySelector('b').textContent = text + (partial ? '…' : '');
@@ -426,7 +448,9 @@ function miss(){
   game.misses++; sfx.miss();
   const s = stats[key(game.round[game.idx])] || (stats[key(game.round[game.idx])] = { ok: 0, miss: 0 });
   s.miss++; store.set('stats', stats);
-  showMsg(['Try again!', 'Almost! Once more', 'Read it again!'][game.misses % 3], true);
+  showMsg(['Oops! Try again', 'Almost! Once more', 'Read it again!'][(game.misses - 1) % 3], true, true);
+  showMark('❌');
+  if(main) main.userData.flash = 1;
   if(main){ const base = main.rotation.z; tween(.5, t => { main.rotation.z = base + Math.sin(t * Math.PI * 4) * .12 * (1 - t); }); }
   if(game.misses >= HELP_AFTER_MISSES) $('#hear').classList.add('nudge');
 }
@@ -518,29 +542,32 @@ function finish(){
   speak(lit === n ? 'Wow! All the lanterns are shining!' : 'Well done! You lit ' + lit + ' lanterns!');
 }
 
-function trickyWords(){
-  const all = [...new Set(WORD_LISTS.flatMap(l => l.words))];
-  return all.filter(w => { const s = stats[key(w)]; return s && s.last && s.last !== 'lit'; });
+function levelWords(){
+  const seen = new Set(), all = [];
+  for(const l of WORD_LISTS) for(const w of l.words){ if(!seen.has(key(w))){ seen.add(key(w)); all.push(w); } }
+  all.sort((a, b) => a.length - b.length || key(a).localeCompare(key(b)));
+  const n = Math.ceil(all.length / 3);
+  return LEVELS.map((lv, i) => ({ ...lv, words: all.slice(i * n, (i + 1) * n) }));
 }
 
 function buildMenu(){
   const box = $('#lists'); box.innerHTML = '';
-  const add = (name, words, special, label) => {
-    const b = document.createElement('button'); if(special) b.className = 'special';
-    const litN = words.filter(w => (stats[key(w)] || {}).ok).length, best = store.get('best-' + name, 0);
-    b.innerHTML = '<span></span><small></small>';
-    b.firstChild.textContent = label || name;
-    b.lastChild.textContent = `🏮 ${litN} of ${words.length} lit` + (best ? `  ·  best ⭐ ${best}` : '');
-    b.onclick = () => { sfx.tap(); startRound(name, words); };
+  for(const lv of levelWords()){
+    if(!lv.words.length) continue;
+    const b = document.createElement('button'), label = lv.icon + ' ' + lv.name;
+    const litN = lv.words.filter(w => (stats[key(w)] || {}).ok).length, best = store.get('best-' + label, 0);
+    b.innerHTML = '<span class="lv"></span><div><span></span><small></small><small></small></div>';
+    b.querySelector('.lv').textContent = lv.icon;
+    b.querySelector('div span').textContent = lv.name;
+    const sm = b.querySelectorAll('small');
+    sm[0].textContent = `${lv.about}: ${lv.words.slice(0, 3).map(shown).join(', ')}…`;
+    sm[1].textContent = `🏮 ${litN} of ${lv.words.length} lit` + (best ? `  ·  best ⭐ ${best}` : '');
+    b.onclick = () => { sfx.tap(); startRound(label, lv.words); };
     box.appendChild(b);
-  };
-  WORD_LISTS.slice().reverse().forEach(l => add(l.name, l.words));
-  if(WORD_LISTS.length > 1) add('All words', [...new Set(WORD_LISTS.flatMap(l => l.words))], true, '🌟 All words');
-  const tr = trickyWords(); if(tr.length) add('Tricky words', tr, true, '🔁 Tricky words');
-  $('#caseBtn').textContent = lowerCase ? 'Letters: abc  (tap for Abc)' : 'Letters: Abc  (tap for abc)';
+  }
   $('#note').textContent = !secure ? 'The mic only works when this game is opened from its web link (https) in Chrome, not as a downloaded file. Here a grown-up can tap 👍 for a correct reading.' : micAvailable() ? 'The 🎤 needs permission the first time. A grown-up can tap 👍 if the mic misses a correct reading.'
     : 'The microphone does not work in this browser (try Chrome). A grown-up can tap 👍 for a correct reading.';
-  $('#note').textContent += '  (Mic: ' + (inArtifact ? 'Claude dictation ' + dictStatus : SR ? 'browser speech' : 'none') + (micBroken ? ', blocked' : '') + ')';
+  if(!micAvailable()) $('#note').textContent += '  (Mic: ' + (inArtifact ? 'Claude dictation ' + dictStatus : SR ? 'browser speech' : 'none') + (micBroken ? ', blocked' : '') + ')';
 }
 
 function toMenu(){
@@ -568,11 +595,25 @@ $('#skipBtn').addEventListener('click', skip);
 $('#homeBtn').addEventListener('click', () => { sfx.tap(); toMenu(); });
 $('#menuBtn').addEventListener('click', () => { sfx.tap(); toMenu(); });
 $('#againBtn').addEventListener('click', () => { sfx.tap(); startRound(game.listKey, game.list); });
-$('#dimBtn').addEventListener('click', () => { sfx.tap(); const dim = game.results.filter(r => !r.lit).map(r => r.w); startRound(game.listKey + ' (dark ones)', dim); });
-$('#caseBtn').addEventListener('click', () => { lowerCase = !lowerCase; store.set('lower', lowerCase); sfx.tap(); buildMenu(); });
+$('#dimBtn').addEventListener('click', () => { sfx.tap(); const dim = game.results.filter(r => !r.lit).map(r => r.w); startRound(game.listKey.split(' (')[0] + ' (dark ones)', dim); });
 const muteBtn = $('#muteBtn');
 muteBtn.textContent = muted ? '🔇' : '🔊';
 muteBtn.addEventListener('click', () => { muted = !muted; store.set('muted', muted); muteBtn.textContent = muted ? '🔇' : '🔊'; if(muted && 'speechSynthesis' in window) speechSynthesis.cancel(); });
+
+/* ================= reminder when the mic is off ================= */
+let micOffSince = 0, lastNudge = -1e9;
+function micIsOn(){ return listening || wantListen; }
+function nudgeMic(){
+  $('#mic').classList.add('nudge'); sfx.attention();
+  showMsg('👆 Tap the 🎤 first!', true);
+  setTimeout(() => { if(!micIsOn() && game.state === 'ask') speak('Tap the microphone, then read the word.'); }, 600);
+}
+setInterval(() => {
+  const off = game.state === 'ask' && !micIsOn() && micAvailable(), now = performance.now();
+  if(!off){ micOffSince = 0; $('#mic').classList.remove('nudge'); return; }
+  if(!micOffSince) micOffSince = now;
+  if(now - micOffSince > 4000 && now - lastNudge > 12000){ lastNudge = now; nudgeMic(); }
+}, 500);
 
 /* ================= loop ================= */
 const clock = new THREE.Clock();

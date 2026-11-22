@@ -1,5 +1,6 @@
 // Words for Word Lanterns (grade-1/english/word-lanterns.html).
-// "# name" starts a list. Words are separated by commas. Repeats are dropped.
+// "# name" starts a list (just for your records). Words are separated by commas. Repeats are dropped.
+// The game puts all the words together and splits them by length into Easy, Medium and Hard.
 // After editing, run tools/make-word-lanterns.ps1 to rebuild the game.
 // Common Grade 1 sight words. Word endings (ed, tion, ing) are left out: they are not read alone.
 
